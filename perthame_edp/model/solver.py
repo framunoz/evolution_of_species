@@ -4,7 +4,8 @@ import numpy as np
 
 from perthame_edp.model.discrete_function import AbstractDiscreteFunction
 from perthame_edp.model.integral_functional import FunctionalF, FunctionalG
-from perthame_edp.utils.validators import DiscreteFunctionValidator, validate_nth_row, Float
+from perthame_edp.utils.validators import validate_nth_row, Float, \
+    DiscreteFunctionValidator, InitialDiscreteFunctionValidator
 
 
 # TODO: Hacer un método para ver el tiempo de ejecución
@@ -16,18 +17,19 @@ class AbstractSolver(AbstractDiscreteFunction, ABC):
     """
     Abstract class for general solvers.
     """
+    r = DiscreteFunctionValidator("x")
+    K = DiscreteFunctionValidator("x", "y")
+    u = InitialDiscreteFunctionValidator("t", "x")
+    R = InitialDiscreteFunctionValidator("t", "y")
 
     def __init__(self, r, K, u_0, R_0, **kwargs):
         AbstractDiscreteFunction.__init__(self, **kwargs)
-        dfv = DiscreteFunctionValidator(**kwargs)
         # Save r and K
-        self._r = dfv.validate_r(r)
-        self._K = dfv.validate_K(K)
+        self.r = r
+        self.K = K
         # Create functions with initial data
-        self._u = np.zeros((self.T + 1, self.N + 2))
-        self._u[0] = dfv.validate_u_0(u_0)
-        self._R = np.zeros((self.T + 1, self.M + 2))
-        self._R[0] = dfv.validate_R_0(R_0)
+        self.u = u_0
+        self.R = R_0
         # A counter of the current step
         self._current_step = 0
 
@@ -88,7 +90,8 @@ class AbstractSolverU(AbstractSolver, ABC):
     """
     Abstract class for function solvers of u.
     """
-    _eps = Float(lower_bound=(0, True))
+    eps = Float(lower_bound=(0, True))
+    m_1 = DiscreteFunctionValidator("x")
 
     def __init__(self, m_1, eps, r, K, u_0, R_0, **kwargs):
         """
@@ -125,10 +128,9 @@ class AbstractSolverU(AbstractSolver, ABC):
             Number of points of the mesh t. Value by default is 100.
         """
         AbstractSolver.__init__(self, r, K, u_0, R_0, **kwargs)
-        dfv = DiscreteFunctionValidator(**kwargs)
         # Save m_1
-        self._m_1 = dfv.validate_m_1(m_1)
-        self._eps = eps
+        self.m_1 = m_1
+        self.eps = eps
         # Generates an instance of F
         self._F = FunctionalF(K, R_0, **kwargs)
         # Matrix that represents the current function
@@ -150,6 +152,8 @@ class AbstractSolverR(AbstractSolver, ABC):
     """
     Abstract class for function solvers of R.
     """
+    m_2 = DiscreteFunctionValidator("y")
+    R_in = DiscreteFunctionValidator("y")
 
     def __init__(self, m_2, R_in, r, K, u_0, R_0, **kwargs):
         """
@@ -186,10 +190,9 @@ class AbstractSolverR(AbstractSolver, ABC):
             Number of points of the mesh t. Value by default is 100.
         """
         AbstractSolver.__init__(self, r, K, u_0, R_0, **kwargs)
-        dfv = DiscreteFunctionValidator(**kwargs)
         # Save m_2 and R_in
-        self._m_2 = dfv.validate_m_2(m_2)
-        self._R_in = dfv.validate_R_in(R_in)
+        self.m_2 = m_2
+        self.R_in = R_in
         self._G = FunctionalG(r, K, u_0, **kwargs)
         # Matrix that represents the current function
         self._matrix = self._R
@@ -214,12 +217,12 @@ class SolverU(AbstractSolverU):
     def actualize_step_np1(self, n: int):
         if not self._mask[n + 1].all():
             # TODO: Mejorar esta parte con álgebra lineal
-            alpha = self._eps * self.dt / self.h1 ** 2
+            alpha = self.eps * self.dt / self.h1 ** 2
             gamma = alpha
             # TODO: Ver si las cond. de borde se puede hacer mejor
             self._u[n + 1, 0], self._u[n + 1, -1] = self._u[n, 0], self._u[n, -1]
             for j in range(1, self.N + 1):
-                A_n_j = -self._m_1[j] + self._r[j] * self._F[n, j]
+                A_n_j = -self.m_1[j] + self.r[j] * self._F[n, j]
                 beta = 1 - 2 * alpha + self.dt * A_n_j
                 u_np1_j = (alpha * self._u[n, j - 1]
                            + beta * self._u[n, j]
@@ -251,10 +254,10 @@ class SolverRMethod2(AbstractSolverR):
     def actualize_step_np1(self, n: int):
         if not self._mask[n + 1].all():
             G_np1 = self._G[n + 1]
-            R_np1 = self._R_in / (self._m_2 + G_np1)
+            R_np1 = self.R_in / (self.m_2 + G_np1)
             self._R[n + 1] = R_np1
             self._update_mask_row(n + 1, True)
-        return self._R[n + 1]
+        return self.R[n + 1]
 
 
 DICT_SOLVERS_R = {

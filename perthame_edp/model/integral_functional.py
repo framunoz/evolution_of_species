@@ -5,7 +5,8 @@ import numpy as np
 from scipy.integrate import simpson
 
 from perthame_edp.model.discrete_function import AbstractDiscreteFunction
-from perthame_edp.utils.validators import DiscreteFunctionValidator, validate_nth_row, DiscreteFunctionValidator2
+from perthame_edp.utils.validators import validate_nth_row, DiscreteFunctionValidator, \
+    InitialDiscreteFunctionValidator
 
 OneDimDiscreteFunction = Union[np.ndarray, Callable[[float], float]]
 TwoDimDiscreteFunction = Union[np.ndarray, Callable[[float, float], float]]
@@ -15,12 +16,10 @@ class AbstractIntegralFunctional(AbstractDiscreteFunction, ABC):
     """
     Abstract class that represents the functions that are like an integral functional.
     """
-    K = DiscreteFunctionValidator2("x", "y")
+    K = DiscreteFunctionValidator("x", "y")
 
     def __init__(self, K: TwoDimDiscreteFunction, **kwargs):
         AbstractDiscreteFunction.__init__(self, **kwargs)
-        # dfv = DiscreteFunctionValidator(**kwargs)
-        # self._K = dfv.validate_K(K)
         self.K = K
 
     @abstractmethod
@@ -39,6 +38,8 @@ class AbstractIntegralFunctional(AbstractDiscreteFunction, ABC):
 
 
 class FunctionalF(AbstractIntegralFunctional):
+    R = InitialDiscreteFunctionValidator("t", "y")
+
     def __init__(self, K: TwoDimDiscreteFunction, R_0: OneDimDiscreteFunction, **kwargs):
         """
         Constructor.
@@ -66,32 +67,33 @@ class FunctionalF(AbstractIntegralFunctional):
             Number of points of the mesh t. Value by default is 100.
         """
         AbstractIntegralFunctional.__init__(self, K, **kwargs)
-        dfv = DiscreteFunctionValidator(**kwargs)
         # Create R function
-        self._R = np.zeros((self.T + 1, self.M + 2))
-        self._R[0] = dfv.validate_R_0(R_0)
+        self.R = R_0
         # Create the internal representation
         self._matrix = np.zeros((self.T + 1, self.N + 2))
         # Create the mask
         self._mask = self._create_mask()
 
     def actualize_row(self, row: np.ndarray, n: int):
-        validate_nth_row(row, self._R[n])
+        validate_nth_row(row, self.R[n])
         self._R[n] = np.copy(row)
         self._update_mask_row(n, False)
         return self
 
     def __call__(self, n: int, j: int):
         if not self._mask[n, j]:
-            array_to_integrate = self._K[j] * self._R[n]
-            integral_value = simpson(array_to_integrate, x=self._y)
+            array_to_integrate = self.K[j] * self.R[n]
+            integral_value = simpson(array_to_integrate, x=self.y)
             self._matrix[n, j] = integral_value
             self._mask[n, j] = True
             return integral_value
-        return self._matrix[n, j]
+        return self.matrix[n, j]
 
 
 class FunctionalG(AbstractIntegralFunctional):
+    r = DiscreteFunctionValidator("x")
+    u = InitialDiscreteFunctionValidator("t", "x")
+
     def __init__(self, r: OneDimDiscreteFunction, K: TwoDimDiscreteFunction,
                  u_0: OneDimDiscreteFunction, **kwargs):
         """
@@ -122,11 +124,9 @@ class FunctionalG(AbstractIntegralFunctional):
             Number of points of the mesh t. Value by default is 100.
         """
         AbstractIntegralFunctional.__init__(self, K, **kwargs)
-        dfv = DiscreteFunctionValidator(**kwargs)
-        self._r = dfv.validate_r(r)
+        self.r = r
         # Create u function
-        self._u = np.zeros((self.T + 1, self.N + 2))
-        self._u[0] = dfv.validate_u_0(u_0)
+        self.u = u_0
         # Create the internal representation
         self._matrix = np.zeros((self.T + 1, self.M + 2))
         # Create the mask
@@ -140,9 +140,9 @@ class FunctionalG(AbstractIntegralFunctional):
 
     def __call__(self, n, k):
         if not self._mask[n, k]:
-            array_to_integrate = self._r * self._K[:, k] * self._u[n]
-            integral_value = simpson(array_to_integrate, x=self._x)
+            array_to_integrate = self.r * self.K[:, k] * self.u[n]
+            integral_value = simpson(array_to_integrate, x=self.x)
             self._matrix[n, k] = integral_value
             self._mask[n, k] = True
             return integral_value
-        return self._matrix[n, k]
+        return self.matrix[n, k]

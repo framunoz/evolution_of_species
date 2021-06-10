@@ -46,7 +46,7 @@ class Validator(ABC):
     def __set__(self, obj, value):
         # Ask if the variable is not set yet
         if not getattr(obj, self.protected_name + "_attr_set"):
-            self.validate(obj, value)
+            self._validate(obj, value)
             setattr(obj, self.protected_name, value)
             setattr(obj, self.protected_name + "_attr_set", True)
         # If it was, raise an error
@@ -54,7 +54,7 @@ class Validator(ABC):
             raise AttributeError(f"Attribute {self.public_name} was already set.")
 
     @abstractmethod
-    def validate(self, obj, value):
+    def _validate(self, obj, value):
         """
         To use the template pattern.
 
@@ -63,7 +63,7 @@ class Validator(ABC):
         obj : Object
             An instance of the current object
         value : object
-            Value to validate.
+            Value to _validate.
         """
         pass
 
@@ -73,7 +73,7 @@ class Boundary(Validator):
     Validator for bounds, like (0.1, 10.5)
     """
 
-    def validate(self, obj, value):
+    def _validate(self, obj, value):
         if not isinstance(value, tuple):
             raise TypeError(f"'{self.public_name}' must be a 'tuple'."
                             + f" Currently is '{type(self.public_name).__name__}'.")
@@ -89,7 +89,7 @@ class Integer(Validator):
     Validator for integers, like 10
     """
 
-    def validate(self, obj, value):
+    def _validate(self, obj, value):
         if not isinstance(value, int):
             raise TypeError(f"'{self.public_name}' must be an 'int'."
                             + f" Currently is '{type(self.public_name).__name__}'")
@@ -111,7 +111,7 @@ class Float(Validator):
         str_upp_bound = "]" if self._lower_bound_eq else ")"
         self._str_bounds = f"{str_low_bound}{self._lower_bound}, {self._upper_bound}{str_upp_bound}"
 
-    def validate(self, obj, value):
+    def _validate(self, obj, value):
         if not isinstance(value, float):
             raise TypeError(f"'{self.public_name}' must be a 'float'."
                             + f" Currently is '{type(self.public_name).__name__}'.")
@@ -128,13 +128,16 @@ class MatrixValidator(Validator, ABC):
 
     def __get__(self, obj, obj_type=None):
         # Returns a copy of the attribute
+        # return getattr(obj, self.protected_name)
         return np.copy(getattr(obj, self.protected_name))
 
     def __set__(self, obj, value):
+        if value is None:
+            setattr(obj, self.protected_name, value)
         # Ask if the variable is not set yet
-        if not getattr(obj, self.protected_name + "_attr_set"):
-            self.validate(obj, value)
-            value_transformed = self.transform_discrete_function(obj, value)
+        elif not getattr(obj, self.protected_name + "_attr_set"):
+            self._validate(obj, value)
+            value_transformed = self._transform_discrete_function(obj, value)
             setattr(obj, self.protected_name, value_transformed)
             setattr(obj, self.protected_name + "_attr_set", True)
         # If it was, raise an error
@@ -142,29 +145,35 @@ class MatrixValidator(Validator, ABC):
             raise AttributeError(f"Attribute {self.public_name} was already set.")
 
     @abstractmethod
-    def transform_discrete_function(self, obj, value):
+    def _transform_discrete_function(self, obj, value):
         """
         To use template pattern.
         """
         pass
 
 
-class DiscreteFunctionValidator2(MatrixValidator):
-    def __init__(self, x, y=None):
+class DiscreteFunctionValidator(MatrixValidator):
+    def __init__(self, x=None, y=None):
         self._x = x
         self._y = y
         self._dict_obj = {}
 
-    def transform_discrete_function(self, obj, value):
+    def _transform_discrete_function(self, obj, value):
+        if self._x is None and self._y is None:
+            return value
         if isinstance(value, np.ndarray):
-            return np.copy(value)
+            return value
+        x = np.linspace(*obj.x_lims, self._dict_obj[self._x])
         if self._dict_obj[self._y] is None:
-            func_to_return = np.array([value(x_) for x_ in obj.x])
+            func_to_return = np.array([value(x_) for x_ in x])
         else:
-            func_to_return = np.array([[value(x_, y_) for y_ in obj.y] for x_ in obj.x])
+            y = np.linspace(*obj.y_lims, self._dict_obj[self._y])
+            func_to_return = np.array([[value(x_, y_) for y_ in y] for x_ in x])
         return func_to_return
 
-    def validate(self, obj, value):
+    def _validate(self, obj, value):
+        if self._x is None and self._y is None:
+            return None
         # Dictionary to save the current setting
         self._dict_obj = {"x": obj.N + 2, "y": obj.M + 2, "t": obj.T + 1, None: None}
         # Make a tuple to compare
@@ -182,7 +191,7 @@ class DiscreteFunctionValidator2(MatrixValidator):
             value = np.array(value)
         # Case shape does not fit
         if is_ndarray and len(value.shape) != size:
-            raise ValueError(f"The dimensions of '{self.public_name}' must be 2."
+            raise ValueError(f"The dimensions of '{self.public_name}' must be {size}."
                              + f" Currently is {len(value)}.")
         # Case dimensions does not fit
         if is_ndarray and value.shape != tuple_to_compare:
@@ -190,76 +199,41 @@ class DiscreteFunctionValidator2(MatrixValidator):
                              + f" Currently is {value.shape}.")
 
 
-class DiscreteFunctionValidator:
-    def __init__(self,
-                 x_lims=(0, 1), y_lims=None, dt=0.01,
-                 N=100, M=None, T=100):
-        self._x_lims = x_lims or (0, 1)
-        self._y_lims = y_lims if y_lims is not None else self._x_lims
-        self._dt = dt or 0.01
-        self._N = N or 100
-        self._M = M if M is not None else self._N
-        self._T = T or 100
-        # Construct mesh
-        self._x = np.linspace(*self._x_lims, self._N + 2)
-        self._y = np.linspace(*self._y_lims, self._M + 2)
-        self._t = np.array([n * self._dt for n in range(T + 1)])
-
-    @staticmethod
-    def _is_valid_discrete_function(func, name, n, m=None):
-        is_ndarray = isinstance(func, np.ndarray)
-        tuple_to_compare = (n, m) if m is not None else (n,)
-        size = len(tuple_to_compare)
-        # Case not is an array or a function
-        if not (is_ndarray or callable(func)):
-            raise TypeError(f"'{name}' must be an 'array' or a 'function'."
-                            + f" Currently is {type(func)}.")
-        # If it is an array, make an instance to ensure the operations
-        if is_ndarray:
-            func = np.array(func)
-        # Case shape does not fit
-        if is_ndarray and len(func.shape) != size:
-            raise ValueError(f"The dimensions of '{name}' must be 2."
-                             + f" Currently is {len(func)}.")
-        # Case dimensions does not fit
-        if is_ndarray and func.shape != tuple_to_compare:
-            raise ValueError(f"The dimensions of '{name}' must be equals to {tuple_to_compare}."
-                             + f" Currently is {func.shape}.")
-
-    @staticmethod
-    def _transform_to_discrete_function(func, name, n, x, m=None, y=None):
-        DiscreteFunctionValidator._is_valid_discrete_function(func, name, n, m)
-        if isinstance(func, np.ndarray):
-            return np.copy(func)
-        if m is None:
-            func_to_return = np.array([func(x_) for x_ in x])
-        else:
-            func_to_return = np.array([[func(x_, y_) for y_ in y] for x_ in x])
+class InitialDiscreteFunctionValidator(DiscreteFunctionValidator):
+    def _transform_discrete_function(self, obj, value):
+        if self._x is None and self._y is None:
+            return value
+        func_to_return = np.zeros((self._dict_obj[self._x], self._dict_obj[self._y]))
+        if isinstance(value, np.ndarray):
+            func_to_return[0] = value
+            return func_to_return
+        y = np.linspace(*obj.y_lims, self._dict_obj[self._y])
+        func_to_return[0] = np.array([value(y_) for y_ in y])
         return func_to_return
 
-    def validate_u(self, func):
-        return self._transform_to_discrete_function(func, "u", self._T + 1, self._t, self._N + 2, self._x)
-
-    def validate_R(self, func):
-        return self._transform_to_discrete_function(func, "R", self._T + 1, self._t, self._M + 2, self._y)
-
-    def validate_K(self, func):
-        return self._transform_to_discrete_function(func, "K", self._N + 2, self._x, self._M + 2, self._y)
-
-    def validate_r(self, func):
-        return self._transform_to_discrete_function(func, "r", self._N + 2, self._x)
-
-    def validate_R_in(self, func):
-        return self._transform_to_discrete_function(func, "R_in", self._M + 2, self._y)
-
-    def validate_m_1(self, func):
-        return self._transform_to_discrete_function(func, "m_1", self._N + 2, self._x)
-
-    def validate_m_2(self, func):
-        return self._transform_to_discrete_function(func, "m_2", self._M + 2, self._y)
-
-    def validate_u_0(self, func):
-        return self._transform_to_discrete_function(func, "u_0", self._N + 2, self._x)
-
-    def validate_R_0(self, func):
-        return self._transform_to_discrete_function(func, "R_0", self._M + 2, self._y)
+    def _validate(self, obj, value):
+        if self._x is None and self._y is None:
+            return None
+        # Dictionary to save the current setting
+        self._dict_obj = {"x": obj.N + 2, "y": obj.M + 2, "t": obj.T + 1, None: None}
+        # Make a tuple to compare
+        y_size = self._dict_obj[self._y]
+        tuple_to_compare = (y_size,)
+        size = len(tuple_to_compare)
+        # Check if value is an array
+        is_ndarray = isinstance(value, np.ndarray)
+        # Case not is an array or a function
+        if not (is_ndarray or callable(value)):
+            raise TypeError(f"'{self.public_name}' must be an 'array' or a 'function'."
+                            + f" Currently is {type(value).__name__}.")
+        # If it is an array, make an instance to ensure the operations
+        if is_ndarray:
+            value = np.array(value)
+        # Case shape does not fit
+        if is_ndarray and len(value.shape) != size:
+            raise ValueError(f"The dimensions of '{self.public_name}' must be {size}."
+                             + f" Currently is {len(value)}.")
+        # Case dimensions does not fit
+        if is_ndarray and value.shape != tuple_to_compare:
+            raise ValueError(f"The dimensions of '{self.public_name}' must be equals to {tuple_to_compare}."
+                             + f" Currently is {value.shape}.")

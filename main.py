@@ -32,7 +32,7 @@ G.actualize_row(F2[3], 3)
 print(G[3, 4])
 
 
-def resolver_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps, solver_u="first schema", solver_R="method 1",
+def resolver_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps, solver_u="first schema", solver_R="method 2",
                       x_lims=(0, 1), y_lims=None, N=100, M=None, dt=0.01, T=100):
     """
     u_0(x) cond inicial de u

@@ -3,7 +3,7 @@ from typing import Tuple, Union
 
 import numpy as np
 
-from perthame_edp.utils.validators import Boundary, Float, Integer, validate_index
+from perthame_edp.utils.validators import Boundary, Float, Integer, validate_index, DiscreteFunctionValidator
 
 BoundaryType = Tuple[int, int]
 
@@ -19,6 +19,10 @@ class AbstractDiscreteFunction(ABC):
     N = Integer()
     M = Integer()
     T = Integer()
+    x = DiscreteFunctionValidator("x")
+    y = DiscreteFunctionValidator("y")
+    h1 = Float(lower_bound=(0, False))
+    h2 = Float(lower_bound=(0, False))
 
     def __init__(self,
                  x_lims: BoundaryType = (0, 1), y_lims: BoundaryType = None, dt: float = 0.01,
@@ -48,11 +52,11 @@ class AbstractDiscreteFunction(ABC):
         self.M = M if M is not None else self.N
         self.T = T if T is not None else 100
         # Construct mesh
-        self._x = np.linspace(*self.x_lims, self.N + 2)
-        self._y = np.linspace(*self.y_lims, self.M + 2)
+        self.x = np.linspace(*self.x_lims, self.N + 2)
+        self.y = np.linspace(*self.y_lims, self.M + 2)
         # Determine steps
-        self._h1 = 1 / (self.N + 1)
-        self._h2 = 1 / (self.M + 1)
+        self.h1 = 1 / (self.N + 1)
+        self.h2 = 1 / (self.M + 1)
         # Matrix unsigned
         self._matrix = None
         # Mask for cache
@@ -73,14 +77,14 @@ class AbstractDiscreteFunction(ABC):
         if isinstance(item, int):
             # Check if the values are already calculated
             if not self._mask[item].all():
-                for j in range(self._matrix.shape[1]):
+                for j in range(self.matrix.shape[1]):
                     self(item, j)
-            return self._matrix[item]
+            return self.matrix[item]
         if isinstance(item, tuple):
             return self(*item)
 
     def __call__(self, i: int, j: int):
-        return self._matrix[i, j]
+        return self.matrix[i, j]
 
     def _update_mask_row(self, n: int, bool_to_update: bool = False) -> None:
         """
@@ -102,39 +106,8 @@ class AbstractDiscreteFunction(ABC):
         np.ndarray
             A mask with the same shape of the matrix representation
         """
-        return np.zeros_like(self._matrix, dtype=bool)
+        return np.zeros_like(self.matrix, dtype=bool)
 
     @property
     def matrix(self):
-        """
-        Returns a representation of the current instance as a matrix.
-        """
         return np.copy(self._matrix)
-
-    @property
-    def x(self):
-        """
-        Returns the mesh x.
-        """
-        return np.copy(self._x)
-
-    @property
-    def y(self):
-        """
-        Returns the mesh y.
-        """
-        return np.copy(self._y)
-
-    @property
-    def h1(self):
-        """
-        Returns the step of the mesh x.
-        """
-        return self._h1
-
-    @property
-    def h2(self):
-        """
-        Returns the step of the mesh y.
-        """
-        return self._h2
