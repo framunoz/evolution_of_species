@@ -1,3 +1,11 @@
+# !/usr/bin/python3
+# -*-coding utf-8 -*-
+# @Time     : 2021/06/11 10:59
+# @Author   : Francisco Muñoz
+# @Project  : evolution_of_species
+# @File     : integral_functional.py
+# @Software : PyCharm
+
 from abc import ABC, abstractmethod
 from typing import Union, Callable
 
