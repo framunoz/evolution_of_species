@@ -243,7 +243,8 @@ class SolverRMethod1(AbstractSolverR):
     """
 
     def actualize_step_np1(self, n: int):
-        pass
+        # TODO: Implementar! (borrar el error dsps de implementar)
+        raise NotImplementedError
 
 
 class SolverRMethod2(AbstractSolverR):

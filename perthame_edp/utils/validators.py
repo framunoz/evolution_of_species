@@ -46,7 +46,7 @@ class Validator(ABC):
     def __set__(self, obj, value):
         # Ask if the variable is not set yet
         if not getattr(obj, self.protected_name + "_attr_set"):
-            self._validate(obj, value)
+            self.validate(obj, value)
             setattr(obj, self.protected_name, value)
             setattr(obj, self.protected_name + "_attr_set", True)
         # If it was, raise an error
@@ -54,7 +54,7 @@ class Validator(ABC):
             raise AttributeError(f"Attribute {self.public_name} was already set.")
 
     @abstractmethod
-    def _validate(self, obj, value):
+    def validate(self, obj, value):
         """
         To use the template pattern.
 
@@ -63,7 +63,7 @@ class Validator(ABC):
         obj : Object
             An instance of the current object
         value : object
-            Value to _validate.
+            Value to validate.
         """
         pass
 
@@ -73,7 +73,7 @@ class Boundary(Validator):
     Validator for bounds, like (0.1, 10.5)
     """
 
-    def _validate(self, obj, value):
+    def validate(self, obj, value):
         if not isinstance(value, tuple):
             raise TypeError(f"'{self.public_name}' must be a 'tuple'."
                             + f" Currently is '{type(self.public_name).__name__}'.")
@@ -89,7 +89,7 @@ class Integer(Validator):
     Validator for integers, like 10
     """
 
-    def _validate(self, obj, value):
+    def validate(self, obj, value):
         if not isinstance(value, int):
             raise TypeError(f"'{self.public_name}' must be an 'int'."
                             + f" Currently is '{type(self.public_name).__name__}'")
@@ -103,22 +103,22 @@ class Float(Validator):
     """
 
     def __init__(self, lower_bound=(None, None), upper_bound=(None, None)):
-        self._lower_bound = -float("inf") if lower_bound[0] is None else lower_bound[0]
-        self._lower_bound_eq = True if lower_bound[1] is None else lower_bound[1]
-        self._upper_bound = float("inf") if upper_bound[0] is None else upper_bound[0]
-        self._upper_bound_eq = True if upper_bound[1] is None else upper_bound[1]
-        str_low_bound = "[" if self._lower_bound_eq else "("
-        str_upp_bound = "]" if self._lower_bound_eq else ")"
-        self._str_bounds = f"{str_low_bound}{self._lower_bound}, {self._upper_bound}{str_upp_bound}"
+        self.lower_bound = -float("inf") if lower_bound[0] is None else lower_bound[0]
+        self.lower_bound_eq = True if lower_bound[1] is None else lower_bound[1]
+        self.upper_bound = float("inf") if upper_bound[0] is None else upper_bound[0]
+        self.upper_bound_eq = True if upper_bound[1] is None else upper_bound[1]
+        str_low_bound = "[" if self.lower_bound_eq else "("
+        str_upp_bound = "]" if self.lower_bound_eq else ")"
+        self.str_bounds = f"{str_low_bound}{self.lower_bound}, {self.upper_bound}{str_upp_bound}"
 
-    def _validate(self, obj, value):
+    def validate(self, obj, value):
         if not isinstance(value, float):
             raise TypeError(f"'{self.public_name}' must be a 'float'."
                             + f" Currently is '{type(self.public_name).__name__}'.")
-        satisfied_lower_bound = value > self._lower_bound or (self._lower_bound_eq and value == self._lower_bound)
-        satisfied_upper_bound = value < self._upper_bound or (self._upper_bound_eq and value == self._upper_bound)
+        satisfied_lower_bound = value > self.lower_bound or (self.lower_bound_eq and value == self.lower_bound)
+        satisfied_upper_bound = value < self.upper_bound or (self.upper_bound_eq and value == self.upper_bound)
         if not (satisfied_lower_bound and satisfied_upper_bound):
-            raise ValueError(f"'{self.public_name}' must be in {self._str_bounds}.")
+            raise ValueError(f"'{self.public_name}' must be in {self.str_bounds}.")
 
 
 class MatrixValidator(Validator, ABC):
@@ -136,8 +136,8 @@ class MatrixValidator(Validator, ABC):
             setattr(obj, self.protected_name, value)
         # Ask if the variable is not set yet
         elif not getattr(obj, self.protected_name + "_attr_set"):
-            self._validate(obj, value)
-            value_transformed = self._transform_discrete_function(obj, value)
+            self.validate(obj, value)
+            value_transformed = np.copy(self.transform_discrete_function(obj, value))
             setattr(obj, self.protected_name, value_transformed)
             setattr(obj, self.protected_name + "_attr_set", True)
         # If it was, raise an error
@@ -145,7 +145,7 @@ class MatrixValidator(Validator, ABC):
             raise AttributeError(f"Attribute {self.public_name} was already set.")
 
     @abstractmethod
-    def _transform_discrete_function(self, obj, value):
+    def transform_discrete_function(self, obj, value):
         """
         To use template pattern.
         """
@@ -154,30 +154,30 @@ class MatrixValidator(Validator, ABC):
 
 class DiscreteFunctionValidator(MatrixValidator):
     def __init__(self, x=None, y=None):
-        self._x = x
-        self._y = y
-        self._dict_obj = {}
+        self.x = x
+        self.y = y
+        self.dict_obj = {}
 
-    def _transform_discrete_function(self, obj, value):
-        if self._x is None and self._y is None:
+    def transform_discrete_function(self, obj, value):
+        if self.x is None and self.y is None:
             return value
         if isinstance(value, np.ndarray):
             return value
-        x = np.linspace(*obj.x_lims, self._dict_obj[self._x])
-        if self._dict_obj[self._y] is None:
+        x = np.linspace(*obj.x_lims, self.dict_obj[self.x])
+        if self.dict_obj[self.y] is None:
             func_to_return = np.array([value(x_) for x_ in x])
         else:
-            y = np.linspace(*obj.y_lims, self._dict_obj[self._y])
+            y = np.linspace(*obj.y_lims, self.dict_obj[self.y])
             func_to_return = np.array([[value(x_, y_) for y_ in y] for x_ in x])
         return func_to_return
 
-    def _validate(self, obj, value):
-        if self._x is None and self._y is None:
+    def validate(self, obj, value):
+        if self.x is None and self.y is None:
             return None
         # Dictionary to save the current setting
-        self._dict_obj = {"x": obj.N + 2, "y": obj.M + 2, "t": obj.T + 1, None: None}
+        self.dict_obj = {"x": obj.N + 2, "y": obj.M + 2, "t": obj.T + 1, None: None}
         # Make a tuple to compare
-        x_size, y_size = self._dict_obj[self._x], self._dict_obj[self._y]
+        x_size, y_size = self.dict_obj[self.x], self.dict_obj[self.y]
         tuple_to_compare = (x_size, y_size) if y_size is not None else (x_size,)
         size = len(tuple_to_compare)
         # Check if value is an array
@@ -200,24 +200,24 @@ class DiscreteFunctionValidator(MatrixValidator):
 
 
 class InitialDiscreteFunctionValidator(DiscreteFunctionValidator):
-    def _transform_discrete_function(self, obj, value):
-        if self._x is None and self._y is None:
+    def transform_discrete_function(self, obj, value):
+        if self.x is None and self.y is None:
             return value
-        func_to_return = np.zeros((self._dict_obj[self._x], self._dict_obj[self._y]))
+        func_to_return = np.zeros((self.dict_obj[self.x], self.dict_obj[self.y]))
         if isinstance(value, np.ndarray):
             func_to_return[0] = value
             return func_to_return
-        y = np.linspace(*obj.y_lims, self._dict_obj[self._y])
+        y = np.linspace(*obj.y_lims, self.dict_obj[self.y])
         func_to_return[0] = np.array([value(y_) for y_ in y])
         return func_to_return
 
-    def _validate(self, obj, value):
-        if self._x is None and self._y is None:
+    def validate(self, obj, value):
+        if self.x is None and self.y is None:
             return None
         # Dictionary to save the current setting
-        self._dict_obj = {"x": obj.N + 2, "y": obj.M + 2, "t": obj.T + 1, None: None}
+        self.dict_obj = {"x": obj.N + 2, "y": obj.M + 2, "t": obj.T + 1, None: None}
         # Make a tuple to compare
-        y_size = self._dict_obj[self._y]
+        y_size = self.dict_obj[self.y]
         tuple_to_compare = (y_size,)
         size = len(tuple_to_compare)
         # Check if value is an array
