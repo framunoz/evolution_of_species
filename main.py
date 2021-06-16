@@ -1,7 +1,7 @@
 import numpy as np
 
 from perthame_edp.model.integral_functional import FunctionalG
-from perthame_edp.model.solver import DICT_SOLVERS_R, DICT_SOLVERS_U
+from perthame_edp.model.solver import solve_perthame
 
 
 def f1(x, y): return y ** 2
@@ -30,39 +30,9 @@ F2 = np.array([f2(t_, x) for t_ in t])
 G = FunctionalG(r, F1, F2[0], **BOUNDARIES_CONFIG)
 G.actualize_row(F2[3], 3)
 print(G[3, 4])
-
-
-def resolver_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps, solver_u="first schema", solver_R="method 2",
-                      x_lims=(0, 1), y_lims=None, N=100, M=None, dt=0.01, T=100):
-    """
-    u_0(x) cond inicial de u
-    R_0(y) cond inicial de R
-    r(x) tasa de crecimiento dependiente del trait
-    R_in(y) Trait dependent resource-supply rate
-    m_1(x) tasa de mortalidad de las especies consumidoras
-    m_2(y) Tasa de decaimiento de los recursos
-    K(x, y) tasa de consumo del recurso y por los individuos de trait x
-    eps tasa de mutación
-    """
-    # Armar diccionario de configuraciones de la discretización
-    disc_configs = {
-        "x_lims": x_lims, "y_lims": y_lims,
-        "N": N, "M": M,
-        "dt": dt, "T": T
-    }
-    # Redefinir T si es que este fuera None
-    T = T or 100
-    # Instanciar solvers
-    R = DICT_SOLVERS_R.get(solver_R, None)(m_2, R_in, r, K, u_0, R_0, **disc_configs)
-    u = DICT_SOLVERS_U.get(solver_u, None)(m_1, eps, r, K, u_0, R_0, **disc_configs)
-    # Iterar sobre n
-    for n in range(T):
-        u.actualize_row(R[n], n)
-        u.actualize_step_np1(n)
-        R.actualize_row(u[n + 1], n + 1)
-        R.actualize_step_np1(n)
-    return u, R
-
+print(G.x_lims)
+G.x_lims = (1, 2)
+print(G.x_lims)
 
 x_lims = None  # (-4, 5)
 y_lims = (-1, 2)
@@ -128,7 +98,7 @@ def R_0(y, R_max=R_MAX, mu_R=MU_R, sig_R=SIG_R) -> float:
 
 CONFIG_LIMITES["x_lims"] = (0, 1)
 
-u, R = resolver_perthame(u_0, R_0, r, R_in, m_1, m_2, K, EPS, **CONFIG_LIMITES)
+u, R = solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, EPS, **CONFIG_LIMITES)
 print(u)
 print(R)
 

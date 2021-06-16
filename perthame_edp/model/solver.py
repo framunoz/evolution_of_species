@@ -21,6 +21,38 @@ from perthame_edp.utils.validators import validate_nth_row, Float, \
 # TODO: Observar casos críticos: ver si los animales se extinguen
 
 
+def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps, solver_u="first schema", solver_R="method 2",
+                   x_lims=(0, 1), y_lims=None, N=100, M=None, dt=0.01, T=100):
+    """
+    u_0(x) cond inicial de u
+    R_0(y) cond inicial de R
+    r(x) tasa de crecimiento dependiente del trait
+    R_in(y) Trait dependent resource-supply rate
+    m_1(x) tasa de mortalidad de las especies consumidoras
+    m_2(y) Tasa de decaimiento de los recursos
+    K(x, y) tasa de consumo del recurso y por los individuos de trait x
+    eps tasa de mutación
+    """
+    # Armar diccionario de configuraciones de la discretización
+    disc_configs = {
+        "x_lims": x_lims, "y_lims": y_lims,
+        "N": N, "M": M,
+        "dt": dt, "T": T
+    }
+    # Redefinir T si es que este fuera None
+    T = 100 if T is None else T
+    # Instanciar solvers
+    R = DICT_SOLVERS_R.get(solver_R, None)(m_2, R_in, r, K, u_0, R_0, **disc_configs)
+    u = DICT_SOLVERS_U.get(solver_u, None)(m_1, eps, r, K, u_0, R_0, **disc_configs)
+    # Iterar sobre n
+    for n in range(T):
+        u.actualize_row(R[n], n)
+        u.actualize_step_np1(n)
+        R.actualize_row(u[n + 1], n + 1)
+        R.actualize_step_np1(n)
+    return u, R
+
+
 class AbstractSolver(AbstractDiscreteFunction, ABC):
     """
     Abstract class for general solvers.
