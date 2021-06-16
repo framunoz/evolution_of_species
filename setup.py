@@ -1,14 +1,12 @@
 import pathlib
 
-import pkg_resources
+from pkg_resources import parse_requirements
 from setuptools import find_packages, setup
 
 # List of requirements
 with pathlib.Path('requirements.txt').open() as requirements_txt:
     install_requires = [
-        str(requirement)
-        for requirement
-        in pkg_resources.parse_requirements(requirements_txt)
+        str(requirement) for requirement in parse_requirements(requirements_txt)
     ]
 
 setup(

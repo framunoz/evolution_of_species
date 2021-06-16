@@ -75,8 +75,8 @@ class AbstractDiscreteFunction(ABC):
         matrix_str = tab + str(self.matrix).replace('\n', '\n' + tab)
         return (self.__class__.__name__
                 + f"(\n"
-                + tab + f"x_lims={self.x_lims}, y_lims={self.y_lims}, T_max={self.T * self.dt:.2f}\n"
                 + tab + f"N={self.N}, M={self.M}, T={self.T},\n"
+                + tab + f"x_lims={self.x_lims}, y_lims={self.y_lims}, T_max={self.T * self.dt:.2f}\n"
                 + tab + f"shape={self.matrix.shape}, matrix=\n{matrix_str}\n"
                 + f")")
 
