@@ -84,14 +84,14 @@ class FunctionalF(AbstractIntegralFunctional):
 
     def actualize_row(self, row: np.ndarray, n: int):
         validate_nth_row(row, self.R[n])
-        self._R[n] = np.copy(row)
+        self._R[n] = row
         self._update_mask_row(n, False)
         return self
 
     def _calculate_row(self, n: int):
         if not self._is_row_calculated(n):
             matrix_to_integrate = self.K * self.R[n].reshape(1, -1)
-            integral_array = simpson(matrix_to_integrate, dx=self.h2, axis=1)
+            integral_array = simpson(matrix_to_integrate, x=self.y, axis=1)
             self._matrix[n] = integral_array
             self._update_mask_row(n, True)
         return self.matrix[n]
@@ -146,14 +146,14 @@ class FunctionalG(AbstractIntegralFunctional):
 
     def actualize_row(self, row: np.ndarray, n: int):
         validate_nth_row(row, self._u[n])
-        self._u[n] = np.copy(row)
+        self._u[n] = row
         self._update_mask_row(n, False)
         return self
 
     def _calculate_row(self, n: int):
         if not self._is_row_calculated(n):
-            matrix_to_integrate = self.r.reshape(-1, 1) * self.K * self.u[n].reshape(-1, 1)
-            integral_array = simpson(matrix_to_integrate, dx=self.h1, axis=0)
+            matrix_to_integrate = (self.r.reshape(-1, 1) * self.K) * self.u[n].reshape(-1, 1)
+            integral_array = simpson(matrix_to_integrate, x=self.x, axis=0)
             self._matrix[n] = integral_array
             self._update_mask_row(n, True)
         return self.matrix[n]

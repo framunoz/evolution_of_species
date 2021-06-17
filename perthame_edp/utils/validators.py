@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
+RETURN_A_COPY = False
 
 def validate_index(item):
     """
@@ -137,7 +138,10 @@ class MatrixValidator(Validator, ABC):
     def __get__(self, obj, obj_type=None):
         # Returns a copy of the attribute
         # return getattr(obj, self.protected_name)
-        return np.copy(getattr(obj, self.protected_name))
+        if RETURN_A_COPY:
+            return np.copy(getattr(obj, self.protected_name))
+        else:
+            return getattr(obj, self.protected_name)
 
     def __set__(self, obj, value):
         if value is None:
@@ -145,7 +149,10 @@ class MatrixValidator(Validator, ABC):
         # Ask if the variable is not set yet
         elif not getattr(obj, self.protected_name + "_attr_set"):
             self.validate(obj, value)
-            value_transformed = np.copy(self.transform_discrete_function(obj, value))
+            if RETURN_A_COPY:
+                value_transformed = np.copy(self.transform_discrete_function(obj, value))
+            else:
+                value_transformed = self.transform_discrete_function(obj, value)
             setattr(obj, self.protected_name, value_transformed)
             setattr(obj, self.protected_name + "_attr_set", True)
         # If it was, raise an error
