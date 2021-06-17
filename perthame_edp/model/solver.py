@@ -21,7 +21,7 @@ from perthame_edp.utils.validators import validate_nth_row, Float, \
 # TODO: Observar casos críticos: ver si los animales se extinguen
 
 
-def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u="first schema", solver_R="method 2",
+def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u=None, solver_R=None,
                    x_lims=(0, 1), y_lims=None, N=100, M=None, dt=0.01, T=100):
     """
     u_0(x) cond inicial de u
@@ -42,8 +42,10 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u="first schema
     # Redefinir T si es que este fuera None
     T = 100 if T is None else T
     # Instanciar solvers
-    R = DICT_SOLVERS_R.get(solver_R, None)(m_2, R_in, r, K, u_0, R_0, **disc_configs)
-    u = DICT_SOLVERS_U.get(solver_u, None)(m_1, eps, r, K, u_0, R_0, **disc_configs)
+    solver_u = solver_u if solver_u is not None else SolverU
+    solver_R = solver_R if solver_R is not None else SolverRMethod1
+    R = solver_R(m_2, R_in, r, K, u_0, R_0, **disc_configs)
+    u = solver_u(m_1, eps, r, K, u_0, R_0, **disc_configs)
     # Iterar sobre n
     for n in range(T):
         u.actualize_row(R[n], n)
