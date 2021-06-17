@@ -33,6 +33,17 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u=None, solver_
     K(x, y) tasa de consumo del recurso y por los individuos de trait x
     eps tasa de mutación
     """
+    # Armar vectores de discretización
+    x = np.linspace(*x_lims, N + 2)
+    y = np.linspace(*y_lims, M + 2)
+    # Armar matrices de las funciones
+    u_0 = np.array([u_0(x_) for x_ in x])
+    R_0 = np.array([R_0(y_) for y_ in y])
+    r = np.array([r(x_) for x_ in x])
+    R_in = np.array([R_in(y_) for y_ in y])
+    m_1 = np.array([m_1(x_) for x_ in x])
+    m_2 = np.array([m_2(y_) for y_ in y])
+    K = np.array([[K(x_, y_) for y_ in y] for x_ in x])
     # Armar diccionario de configuraciones de la discretización
     disc_configs = {
         "x_lims": x_lims, "y_lims": y_lims,
