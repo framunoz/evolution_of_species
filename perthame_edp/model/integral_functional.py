@@ -88,13 +88,17 @@ class FunctionalF(AbstractIntegralFunctional):
         self._update_mask_row(n, False)
         return self
 
-    def __call__(self, n: int, j: int):
-        if not self._mask[n, j]:
-            array_to_integrate = self.K[j] * self.R[n]
-            integral_value = simpson(array_to_integrate, x=self.y)
-            self._matrix[n, j] = integral_value
-            self._mask[n, j] = True
-            return integral_value
+    def _calculate_row(self, n: int):
+        if not self._is_row_calculated(n):
+            matrix_to_integrate = self.K * self.R[n].reshape(1, -1)
+            integral_array = simpson(matrix_to_integrate, dx=self.h2, axis=1)
+            self._matrix[n] = integral_array
+            self._update_mask_row(n, True)
+        return self.matrix[n]
+
+    def _calculate_component(self, n: int, j: int):
+        if not self._is_component_calculated(n, j):
+            self._calculate_row(n)
         return self.matrix[n, j]
 
 
@@ -146,11 +150,15 @@ class FunctionalG(AbstractIntegralFunctional):
         self._update_mask_row(n, False)
         return self
 
-    def __call__(self, n, k):
-        if not self._mask[n, k]:
-            array_to_integrate = self.r * self.K[:, k] * self.u[n]
-            integral_value = simpson(array_to_integrate, x=self.x)
-            self._matrix[n, k] = integral_value
-            self._mask[n, k] = True
-            return integral_value
+    def _calculate_row(self, n: int):
+        if not self._is_row_calculated(n):
+            matrix_to_integrate = self.r.reshape(-1, 1) * self.K * self.u[n].reshape(-1, 1)
+            integral_array = simpson(matrix_to_integrate, dx=self.h1, axis=0)
+            self._matrix[n] = integral_array
+            self._update_mask_row(n, True)
+        return self.matrix[n]
+
+    def _calculate_component(self, n: int, k: int):
+        if not self._is_component_calculated(n, k):
+            self._calculate_row(n)
         return self.matrix[n, k]

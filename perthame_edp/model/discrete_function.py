@@ -85,14 +85,34 @@ class AbstractDiscreteFunction(ABC):
         if isinstance(item, int):
             # Check if the values are already calculated
             if not self._mask[item].all():
-                for j in range(self.matrix.shape[1]):
-                    self(item, j)
+                self._calculate_row(item)
             return self.matrix[item]
         if isinstance(item, tuple):
-            return self(*item)
+            return self._calculate_component(*item)
 
-    def __call__(self, i: int, j: int):
+    def _calculate_component(self, i: int, j: int):
+        """
+        Calculates and update a specific component
+
+        Parameters
+        ----------
+        i: int
+            i-th row
+        j: int
+            j-th column
+        """
         return self.matrix[i, j]
+
+    def _calculate_row(self, i: int):
+        """
+        Calculates and update a specific row
+        Parameters
+        ----------
+        i: int
+            i-th row
+        """
+        for j in range(self.matrix.shape[1]):
+            self._calculate_component(i, j)
 
     def _update_mask_row(self, n: int, bool_to_update: bool = False) -> None:
         """
@@ -115,6 +135,30 @@ class AbstractDiscreteFunction(ABC):
             A mask with the same shape of the matrix representation
         """
         return np.zeros_like(self.matrix, dtype=bool)
+
+    def _is_component_calculated(self, i: int, j: int):
+        """
+        Verify if the (i, j)-th component was calculated.
+
+        Parameters
+        ----------
+        i: int
+            i-th row
+        j: int
+            j-th column
+        """
+        return self._mask[i, j]
+
+    def _is_row_calculated(self, i: int):
+        """
+        Verify if the i-th row was calculated.
+
+        Parameters
+        ----------
+        i: int
+            i-th row
+        """
+        return self._mask[i].all()
 
     @property
     def matrix(self):

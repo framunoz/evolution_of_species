@@ -21,7 +21,7 @@ from perthame_edp.utils.validators import validate_nth_row, Float, \
 # TODO: Observar casos críticos: ver si los animales se extinguen
 
 
-def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps, solver_u="first schema", solver_R="method 2",
+def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u="first schema", solver_R="method 2",
                    x_lims=(0, 1), y_lims=None, N=100, M=None, dt=0.01, T=100):
     """
     u_0(x) cond inicial de u
@@ -254,20 +254,23 @@ class SolverU(AbstractSolverU):
     Solver that uses the first method for u.
     """
 
+    def _create_transition_matrix(self, n: int):
+        # Calculates upper and lower diagonals
+        alpha = self.eps * self.dt / self.h1 ** 2
+        alpha_array = np.ones((self.N + 1,)) * alpha
+        upper_matrix = np.diag(alpha_array, 1)
+        lower_matrix = np.diag(alpha_array, -1)
+        # Replace the Neumann conditions
+        upper_matrix[0, 1] = lower_matrix[-1, -2] = 2 * alpha
+        # Calculates the central diagonal: beta
+        A_n = -self.m_1 + self.r * self._F[n]
+        beta_array = 1 - 2 * alpha + self.dt * A_n
+        central_matrix = np.diag(beta_array, 0)
+        return lower_matrix + central_matrix + upper_matrix
+
     def actualize_step_np1(self, n: int):
-        if not self._mask[n + 1].all():
-            # TODO: Mejorar esta parte con álgebra lineal
-            alpha = self.eps * self.dt / self.h1 ** 2
-            gamma = alpha
-            # TODO: Ver si las cond. de borde se puede hacer mejor
-            self._u[n + 1, 0], self._u[n + 1, -1] = self._u[n, 0], self._u[n, -1]
-            for j in range(1, self.N + 1):
-                A_n_j = -self.m_1[j] + self.r[j] * self._F[n, j]
-                beta = 1 - 2 * alpha + self.dt * A_n_j
-                u_np1_j = (alpha * self._u[n, j - 1]
-                           + beta * self._u[n, j]
-                           + gamma * self._u[n, j + 1])
-                self._u[n + 1, j] = u_np1_j
+        if not self._is_row_calculated(n + 1):
+            self._u[n + 1] = self._create_transition_matrix(n) @ self._u[n]
             self._update_mask_row(n + 1, True)
         return self._u[n + 1]
 
