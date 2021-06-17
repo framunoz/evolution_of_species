@@ -160,6 +160,7 @@ class MatrixValidator(Validator, ABC):
         pass
 
 
+# TODO: Utilizar template pattern en esta parte para generalizar comportamientos
 class DiscreteFunctionValidator(MatrixValidator):
     def __init__(self, x=None, y=None):
         self.x = x

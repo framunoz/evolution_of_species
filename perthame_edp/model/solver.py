@@ -286,8 +286,10 @@ class SolverRMethod1(AbstractSolverR):
     """
 
     def actualize_step_np1(self, n: int):
-        # TODO: Implementar! (borrar el error dsps de implementar)
-        raise NotImplementedError
+        if not self._is_row_calculated(n + 1):
+            self._R[n + 1] = (1 - self.dt * (self.m_2 + self._G[n])) * self.R[n] + self.dt * self.R_in
+            self._update_mask_row(n + 1, True)
+        return self._R[n + 1]
 
 
 class SolverRMethod2(AbstractSolverR):
@@ -296,7 +298,7 @@ class SolverRMethod2(AbstractSolverR):
     """
 
     def actualize_step_np1(self, n: int):
-        if not self._mask[n + 1].all():
+        if not self._is_row_calculated(n + 1):
             G_np1 = self._G[n + 1]
             R_np1 = self.R_in / (self.m_2 + G_np1)
             self._R[n + 1] = R_np1
