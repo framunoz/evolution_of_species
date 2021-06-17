@@ -32,12 +32,12 @@ G.actualize_row(F2[3], 3)
 print(G[1, 2])
 print(G._mask)
 
-x_lims = None  # (-4, 5)
-y_lims = (-1, 2)
-N = 100  # None  # 100
-M = 110
-dt = None  # 0.02
-T = 120
+x_lims = (-4, 4)  # (-4, 5)
+y_lims = (-4, 4)
+N = 300
+M = 300
+dt = 0.01  # 0.02
+T = 2000
 
 CONFIG_LIMITES = {
     "x_lims": x_lims,
@@ -94,11 +94,23 @@ def R_0(y, R_max=R_MAX, mu_R=MU_R, sig_R=SIG_R) -> float:
     return num / den
 
 
-CONFIG_LIMITES["x_lims"] = (0, 1)
+# Función para calcular cuanto se demora una función
+import time
 
-u, R = solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, EPS, **CONFIG_LIMITES)
+
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        print('%2.2f ms' % ((te - ts) * 1000))
+        return result
+
+    return timed
+
+
+u, R = timeit(solve_perthame)(u_0, R_0, r, R_in, m_1, m_2, K, EPS, **CONFIG_LIMITES)
 print(u)
-print(u._create_transition_matrix(0) @ u.u[0])
 print(R)
 
 a_matrix = np.zeros((2, 3), dtype=bool)

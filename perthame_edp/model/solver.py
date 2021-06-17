@@ -9,6 +9,7 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
+from scipy import sparse
 
 from perthame_edp.model.discrete_function import AbstractDiscreteFunction
 from perthame_edp.model.integral_functional import FunctionalF, FunctionalG
@@ -254,7 +255,7 @@ class SolverU(AbstractSolverU):
     Solver that uses the first method for u.
     """
 
-    def _create_transition_matrix(self, n: int):
+    def _create_transition_matrix(self, n: int) -> sparse.csr.csr_matrix:
         # Calculates upper and lower diagonals
         alpha = self.eps * self.dt / self.h1 ** 2
         alpha_array = np.ones((self.N + 1,)) * alpha
@@ -266,11 +267,11 @@ class SolverU(AbstractSolverU):
         A_n = -self.m_1 + self.r * self._F[n]
         beta_array = 1 - 2 * alpha + self.dt * A_n
         central_matrix = np.diag(beta_array, 0)
-        return lower_matrix + central_matrix + upper_matrix
+        return sparse.csr_matrix(lower_matrix + central_matrix + upper_matrix)
 
-    def actualize_step_np1(self, n: int):
+    def actualize_step_np1(self, n: int) -> np.ndarray:
         if not self._is_row_calculated(n + 1):
-            self._u[n + 1] = self._create_transition_matrix(n) @ self._u[n]
+            self._u[n + 1] = self._create_transition_matrix(n).dot(self._u[n])
             self._update_mask_row(n + 1, True)
         return self._u[n + 1]
 
