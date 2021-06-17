@@ -12,8 +12,8 @@ from typing import Union, Callable
 import numpy as np
 from scipy.integrate import simpson
 
-from perthame_edp.model.discrete_function import AbstractDiscreteFunction
-from perthame_edp.utils.validators import validate_nth_row, DiscreteFunctionValidator, \
+from perthame_pde.model.discrete_function import AbstractDiscreteFunction
+from perthame_pde.utils.validators import validate_nth_row, DiscreteFunctionValidator, \
     InitialDiscreteFunctionValidator
 
 OneDimDiscreteFunction = Union[np.ndarray, Callable[[float], float]]

@@ -10,7 +10,7 @@ with pathlib.Path('requirements.txt').open() as requirements_txt:
     ]
 
 setup(
-    name="perthame_edp",
+    name="perthame_pde",
     packages=find_packages(),
     version="0.1.0",
     description="Library to solve the Perthame's equations",

@@ -1,7 +1,7 @@
 import numpy as np
 
-from perthame_edp.model.integral_functional import FunctionalG
-from perthame_edp.model.solver import solve_perthame
+from perthame_pde.model.integral_functional import FunctionalG
+from perthame_pde.model.solver import solve_perthame
 
 
 def f1(x, y): return y ** 2

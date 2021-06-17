@@ -10,9 +10,9 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from perthame_edp.model.discrete_function import AbstractDiscreteFunction
-from perthame_edp.model.integral_functional import FunctionalF, FunctionalG
-from perthame_edp.utils.validators import validate_nth_row, Float, \
+from perthame_pde.model.discrete_function import AbstractDiscreteFunction
+from perthame_pde.model.integral_functional import FunctionalF, FunctionalG
+from perthame_pde.utils.validators import validate_nth_row, Float, \
     DiscreteFunctionValidator, InitialDiscreteFunctionValidator
 
 

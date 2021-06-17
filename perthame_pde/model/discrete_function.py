@@ -11,7 +11,7 @@ from typing import Tuple, Union
 
 import numpy as np
 
-from perthame_edp.utils.validators import Boundary, Float, Integer, validate_index, DiscreteFunctionValidator
+from perthame_pde.utils.validators import Boundary, Float, Integer, validate_index, DiscreteFunctionValidator
 
 BoundaryType = Tuple[int, int]
 
