@@ -53,8 +53,8 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u=None, solver_
     # Redefinir T si es que este fuera None
     T = 100 if T is None else T
     # Instanciar solvers
-    solver_u = solver_u if solver_u is not None else SolverU
-    solver_R = solver_R if solver_R is not None else SolverRMethod1
+    solver_u = solver_u if solver_u is not None else Solver1U
+    solver_R = solver_R if solver_R is not None else Solver1R
     R = solver_R(m_2, R_in, r, K, u_0, R_0, **disc_configs)
     u = solver_u(m_1, eps, r, K, u_0, R_0, **disc_configs)
     # Iterar sobre n
@@ -83,30 +83,6 @@ class AbstractSolver(AbstractDiscreteFunction, ABC):
         # Create functions with initial data
         self.u = u_0
         self.R = R_0
-        # A counter of the current step
-        self._current_step = 0
-
-    def _is_next_step(self, n: int) -> bool:
-        """
-        Returns True if n is at least the next step. Otherwise, return False.
-
-        Parameters
-        ----------
-        n : int
-            Step to verify
-        """
-        return n <= self._current_step + 1
-
-    def _update_step(self, n: int):
-        """
-        Update the current step.
-
-        Parameters
-        ----------
-        n : int
-            Step to set as current
-        """
-        self._current_step = n + 1
 
     @abstractmethod
     def actualize_row(self, row: np.ndarray, n: int):
@@ -123,7 +99,7 @@ class AbstractSolver(AbstractDiscreteFunction, ABC):
         pass
 
     @abstractmethod
-    def actualize_step_np1(self, n: int):
+    def actualize_step_np1(self, n: int) -> np.ndarray:
         """
         Actualize the solver to the next step.
 
@@ -193,7 +169,7 @@ class AbstractSolverU(AbstractSolver, ABC):
 
     def actualize_row(self, row: np.ndarray, n: int):
         validate_nth_row(row, self._R[n])
-        self._R[n] = np.copy(row)
+        self._R[n] = row
         # Update the row of F
         self._F.actualize_row(row, n)
         # Update the mask
@@ -254,7 +230,7 @@ class AbstractSolverR(AbstractSolver, ABC):
 
     def actualize_row(self, row: np.ndarray, n: int):
         validate_nth_row(row, self._u[n])
-        self._u[n] = np.copy(row)
+        self._u[n] = row
         # Update the row of G
         self._G.actualize_row(row, n)
         # Update the mask
@@ -262,7 +238,7 @@ class AbstractSolverR(AbstractSolver, ABC):
         return self
 
 
-class SolverU(AbstractSolverU):
+class Solver1U(AbstractSolverU):
     """
     Solver that uses the first method for u.
     """
@@ -288,29 +264,24 @@ class SolverU(AbstractSolverU):
         return self._u[n + 1]
 
 
-DICT_SOLVERS_U = {
-    "first schema": SolverU
-}
-
-
-class SolverRMethod1(AbstractSolverR):
+class Solver1R(AbstractSolverR):
     """
     Solver that uses the first equation proposed in the paper.
     """
 
-    def actualize_step_np1(self, n: int):
+    def actualize_step_np1(self, n: int) -> np.ndarray:
         if not self._is_row_calculated(n + 1):
             self._R[n + 1] = (1 - self.dt * (self.m_2 + self._G[n])) * self.R[n] + self.dt * self.R_in
             self._update_mask_row(n + 1, True)
         return self._R[n + 1]
 
 
-class SolverRMethod2(AbstractSolverR):
+class Solver2R(AbstractSolverR):
     """
     Solver that uses the second equation proposed in the paper.
     """
 
-    def actualize_step_np1(self, n: int):
+    def actualize_step_np1(self, n: int) -> np.ndarray:
         if not self._is_row_calculated(n + 1):
             G_np1 = self._G[n + 1]
             R_np1 = self.R_in / (self.m_2 + G_np1)
@@ -319,7 +290,18 @@ class SolverRMethod2(AbstractSolverR):
         return self.R[n + 1]
 
 
-DICT_SOLVERS_R = {
-    "method 1": SolverRMethod1,
-    "method 2": SolverRMethod2,
-}
+class Solver3R(AbstractSolverR):
+    """
+    Solver that uses the first equation proposed in the paper with a second order method.
+    """
+
+    def actualize_step_np1(self, n: int) -> np.ndarray:
+        if not self._is_row_calculated(n + 1):
+            A_n = self.dt * (self.m_2 + self._G[n])
+            B_n = self.dt * self.R_in
+            if n == 0:
+                self._R[n + 1] = (1 - A_n) * self.R[n] + B_n
+            else:
+                self._R[n + 1] = self.R[n - 1] - 2 * A_n * self.R[n] + 2 * B_n
+            self._update_mask_row(n + 1, True)
+        return self._R[n + 1]
