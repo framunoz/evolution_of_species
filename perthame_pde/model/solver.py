@@ -21,7 +21,7 @@ from perthame_pde.utils.validators import validate_nth_row, Float, \
     DiscreteFunctionValidator, InitialDiscreteFunctionValidator
 
 
-def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u=None, solver_R=None, verbose=False, reports_every=1,
+def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0., solver_u=None, solver_R=None, verbose=False, reports_every=1,
                    x_lims=(0, 1), y_lims=None, N=100, M=None, dt=0.01, T=100):
     """
     u_0(x) cond inicial de u
@@ -62,7 +62,7 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u=None, solver_
     solver_u = solver_u if solver_u is not None else Solver1U
     solver_R = solver_R if solver_R is not None else Solver1R
     R = solver_R(m_2, R_in, r, K, u_0, R_0, **disc_configs)
-    u = solver_u(m_1, eps, r, K, u_0, R_0, **disc_configs)
+    u = solver_u(m_1, r, K, u_0, R_0, eps, **disc_configs)
     # Start iterations
     if verbose:
         print("Starting iterations")
@@ -172,7 +172,7 @@ class AbstractSolverU(AbstractSolver, ABC):
     eps = Float(lower_bound=(0, True))
     m_1 = DiscreteFunctionValidator("x")
 
-    def __init__(self, m_1, eps, r, K, u_0, R_0, **kwargs):
+    def __init__(self, m_1, r, K, u_0, R_0, eps=0., **kwargs):
         """
         Constructor.
 
@@ -332,8 +332,8 @@ class Solver2U(AbstractSolverU):
     """
     theta = Float(lower_bound=(0, True), upper_bound=(1, True))
 
-    def __init__(self, m_1, eps, r, K, u_0, R_0, theta=0.5, **kwargs):
-        AbstractSolverU.__init__(self, m_1, eps, r, K, u_0, R_0, **kwargs)
+    def __init__(self, m_1, r, K, u_0, R_0, eps=0., theta=0.5, **kwargs):
+        AbstractSolverU.__init__(self, m_1, r, K, u_0, R_0, eps, **kwargs)
         self.theta = theta
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
