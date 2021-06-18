@@ -123,7 +123,8 @@ class AbstractDiscreteFunction(ABC):
         n : int
             A row of the mask.
         """
-        self._mask[n] = bool_to_update
+        if n < len(self._mask):
+            self._mask[n] = bool_to_update
 
     def _create_mask(self) -> np.ndarray:
         """
@@ -136,7 +137,7 @@ class AbstractDiscreteFunction(ABC):
         """
         return np.zeros_like(self.matrix, dtype=bool)
 
-    def _is_component_calculated(self, i: int, j: int):
+    def _is_component_calculated(self, i: int, j: int) -> bool:
         """
         Verify if the (i, j)-th component was calculated.
 
@@ -147,9 +148,12 @@ class AbstractDiscreteFunction(ABC):
         j: int
             j-th column
         """
-        return self._mask[i, j]
+        if i < len(self._mask) and j < len(self._mask[i]):
+            return self._mask[i, j]
+        else:
+            return False
 
-    def _is_row_calculated(self, i: int):
+    def _is_row_calculated(self, i: int) -> bool:
         """
         Verify if the i-th row was calculated.
 
@@ -158,8 +162,11 @@ class AbstractDiscreteFunction(ABC):
         i: int
             i-th row
         """
-        return self._mask[i].all()
+        if i < len(self._mask):
+            return self._mask[i].all()
+        else:
+            return False
 
     @property
-    def matrix(self):
+    def matrix(self) -> np.ndarray:
         return np.copy(self._matrix)

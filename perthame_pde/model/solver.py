@@ -7,10 +7,12 @@
 # @Software : PyCharm
 import sys
 import time
+import warnings
 from abc import ABC, abstractmethod
 from functools import partial
 
 import numpy as np
+from scipy.integrate import simpson
 
 from perthame_pde.model.discrete_function import AbstractDiscreteFunction
 from perthame_pde.model.integral_functional import FunctionalF, FunctionalG
@@ -18,7 +20,6 @@ from perthame_pde.utils.validators import validate_nth_row, Float, \
     DiscreteFunctionValidator, InitialDiscreteFunctionValidator
 
 
-# TODO: Hacer un método para calcular la integral de solvers
 # TODO: Hacer un método para que se retorne la solución como una función, a través de interpolación
 # TODO: Observar casos críticos: ver si los animales se extinguen
 
@@ -129,11 +130,21 @@ class AbstractSolver(AbstractDiscreteFunction, ABC):
         ----------
         n : int
             current step.
-
-        Returns
-        -------
-
         """
+        pass
+
+    def calculate_total_mass(self) -> np.ndarray:
+        """
+        Calculates the total mass.
+        """
+        for n in range(len(self._mask)):
+            if not self._is_row_calculated(n):
+                warnings.warn(f"There is a row that has not yet been calculated. n = {n}", Warning)
+                break
+        return self._calculate_total_mass()
+
+    @abstractmethod
+    def _calculate_total_mass(self) -> np.ndarray:
         pass
 
 
@@ -195,8 +206,11 @@ class AbstractSolverU(AbstractSolver, ABC):
         # Update the row of F
         self._F.actualize_row(row, n)
         # Update the mask
-        self._update_mask_row(n, False)
+        self._update_mask_row(n + 1, False)
         return self
+
+    def _calculate_total_mass(self) -> np.ndarray:
+        return simpson(self._matrix, dx=self.h1, axis=1)
 
 
 class AbstractSolverR(AbstractSolver, ABC):
@@ -256,8 +270,11 @@ class AbstractSolverR(AbstractSolver, ABC):
         # Update the row of G
         self._G.actualize_row(row, n)
         # Update the mask
-        self._update_mask_row(n, False)
+        self._update_mask_row(n + 1, False)
         return self
+
+    def _calculate_total_mass(self) -> np.ndarray:
+        return simpson(self._matrix, dx=self.h2, axis=1)
 
 
 class Solver1U(AbstractSolverU):
