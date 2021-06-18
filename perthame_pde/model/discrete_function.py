@@ -62,6 +62,7 @@ class AbstractDiscreteFunction(ABC):
         # Construct mesh
         self.x = np.linspace(*self.x_lims, self.N + 2)
         self.y = np.linspace(*self.y_lims, self.M + 2)
+        self.t = np.linspace(0, self.dt * self.T, self.T + 1)
         # Determine steps
         self.h1 = 1 / (self.N + 1)
         self.h2 = 1 / (self.M + 1)

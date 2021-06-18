@@ -13,15 +13,12 @@ from functools import partial
 
 import numpy as np
 from scipy.integrate import simpson
+from scipy.interpolate import interp2d
 
 from perthame_pde.model.discrete_function import AbstractDiscreteFunction
 from perthame_pde.model.integral_functional import FunctionalF, FunctionalG
 from perthame_pde.utils.validators import validate_nth_row, Float, \
     DiscreteFunctionValidator, InitialDiscreteFunctionValidator
-
-
-# TODO: Hacer un método para que se retorne la solución como una función, a través de interpolación
-# TODO: Observar casos críticos: ver si los animales se extinguen
 
 
 def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u=None, solver_R=None, verbose=False, reports_every=1,
@@ -137,14 +134,33 @@ class AbstractSolver(AbstractDiscreteFunction, ABC):
         """
         Calculates the total mass.
         """
+        self._warning_row_not_calculated()
+        return self._calculate_total_mass()
+
+    def function_interpolated(self):
+        """
+        Returns the current function interpolated on the mesh
+        """
+        self._warning_row_not_calculated()
+        return self._function_interpolated()
+
+    def _warning_row_not_calculated(self):
         for n in range(len(self._mask)):
             if not self._is_row_calculated(n):
-                warnings.warn(f"There is a row that has not yet been calculated. n = {n}", Warning)
-                break
-        return self._calculate_total_mass()
+                warnings.warn(f"There is a row that has not yet been calculated. n = {n}", Warning, 2)
 
     @abstractmethod
     def _calculate_total_mass(self) -> np.ndarray:
+        """
+        To use template pattern.
+        """
+        pass
+
+    @abstractmethod
+    def _function_interpolated(self):
+        """
+        To use template pattern.
+        """
         pass
 
 
@@ -212,6 +228,9 @@ class AbstractSolverU(AbstractSolver, ABC):
     def _calculate_total_mass(self) -> np.ndarray:
         return simpson(self._matrix, dx=self.h1, axis=1)
 
+    def _function_interpolated(self):
+        return interp2d(self.t, self.x, self.u.T)
+
 
 class AbstractSolverR(AbstractSolver, ABC):
     """
@@ -275,6 +294,9 @@ class AbstractSolverR(AbstractSolver, ABC):
 
     def _calculate_total_mass(self) -> np.ndarray:
         return simpson(self._matrix, dx=self.h2, axis=1)
+
+    def _function_interpolated(self):
+        return interp2d(self.t, self.y, self.R.T)
 
 
 class Solver1U(AbstractSolverU):
