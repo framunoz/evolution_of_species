@@ -7,6 +7,7 @@
 # @Software : PyCharm
 
 from abc import ABC, abstractmethod
+from functools import partial
 
 import numpy as np
 
@@ -18,6 +19,7 @@ from perthame_pde.utils.validators import validate_nth_row, Float, \
 
 # TODO: Hacer un método para ver el tiempo de ejecución
 # TODO: Hacer un método para calcular la integral de solvers
+# TODO: Hacer un método para que se retorne la solución como una función, a través de interpolación
 # TODO: Observar casos críticos: ver si los animales se extinguen
 
 
@@ -262,6 +264,32 @@ class Solver1U(AbstractSolverU):
             self._u[n + 1] = self._create_transition_matrix(n).dot(self._u[n])
             self._update_mask_row(n + 1, True)
         return self._u[n + 1]
+
+
+class Solver2U(AbstractSolverU):
+    """
+    Solver that uses the first method for u. theta-implicit scheme
+    """
+    theta = Float(lower_bound=(0, True), upper_bound=(1, True))
+
+    def __init__(self, m_1, eps, r, K, u_0, R_0, theta=0.5, **kwargs):
+        AbstractSolverU.__init__(self, m_1, eps, r, K, u_0, R_0, **kwargs)
+        self.theta = theta
+
+    def actualize_step_np1(self, n: int) -> np.ndarray:
+        raise NotImplementedError("Implementar!")
+
+    @classmethod
+    def set_theta(cls, theta: float):
+        """
+        Factory method that sets the theta value before init the class.
+
+        Parameters
+        ----------
+        theta: float
+            Value of the theta-implicit scheme.
+        """
+        return partial(cls, theta=theta)
 
 
 class Solver1R(AbstractSolverR):
