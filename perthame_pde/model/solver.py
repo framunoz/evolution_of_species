@@ -148,6 +148,7 @@ class AbstractSolver(AbstractDiscreteFunction, ABC):
         for n in range(len(self._mask)):
             if not self._is_row_calculated(n):
                 warnings.warn(f"There is a row that has not yet been calculated. n = {n}", Warning, 2)
+                break
 
     @abstractmethod
     def _calculate_total_mass(self) -> np.ndarray:
