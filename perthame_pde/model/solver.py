@@ -227,7 +227,7 @@ class AbstractSolverU(AbstractSolver, ABC):
         return self
 
     def _calculate_total_mass(self) -> np.ndarray:
-        return simpson(self._matrix, dx=self.h1, axis=1)
+        return simpson(self._matrix, x=self.x, axis=1)
 
     def _function_interpolated(self):
         return interp2d(self.t, self.x, self.u.T)
@@ -294,7 +294,7 @@ class AbstractSolverR(AbstractSolver, ABC):
         return self
 
     def _calculate_total_mass(self) -> np.ndarray:
-        return simpson(self._matrix, dx=self.h2, axis=1)
+        return simpson(self._matrix, x=self.y, axis=1)
 
     def _function_interpolated(self):
         return interp2d(self.t, self.y, self.R.T)
