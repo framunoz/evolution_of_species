@@ -5,7 +5,8 @@
 # @Project  : evolution_of_species
 # @File     : solver.py
 # @Software : PyCharm
-
+import sys
+import time
 from abc import ABC, abstractmethod
 from functools import partial
 
@@ -17,13 +18,12 @@ from perthame_pde.utils.validators import validate_nth_row, Float, \
     DiscreteFunctionValidator, InitialDiscreteFunctionValidator
 
 
-# TODO: Hacer un método para ver el tiempo de ejecución
 # TODO: Hacer un método para calcular la integral de solvers
 # TODO: Hacer un método para que se retorne la solución como una función, a través de interpolación
 # TODO: Observar casos críticos: ver si los animales se extinguen
 
 
-def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u=None, solver_R=None,
+def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u=None, solver_R=None, verbose=False, reports_every=1,
                    x_lims=(0, 1), y_lims=None, N=100, M=None, dt=0.01, T=100):
     """
     u_0(x) cond inicial de u
@@ -35,10 +35,11 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u=None, solver_
     K(x, y) tasa de consumo del recurso y por los individuos de trait x
     eps tasa de mutación
     """
-    # Armar vectores de discretización
+    # Building discrete functions as arrays
+    if verbose:
+        print("Creating arrays...")
     x = np.linspace(*x_lims, N + 2)
     y = np.linspace(*y_lims, M + 2)
-    # Armar matrices de las funciones
     u_0 = np.array([u_0(x_) for x_ in x])
     R_0 = np.array([R_0(y_) for y_ in y])
     r = np.array([r(x_) for x_ in x])
@@ -46,25 +47,44 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0, solver_u=None, solver_
     m_1 = np.array([m_1(x_) for x_ in x])
     m_2 = np.array([m_2(y_) for y_ in y])
     K = np.array([[K(x_, y_) for y_ in y] for x_ in x])
-    # Armar diccionario de configuraciones de la discretización
+
+    # Building dictionary with discretization settings
     disc_configs = {
         "x_lims": x_lims, "y_lims": y_lims,
         "N": N, "M": M,
         "dt": dt, "T": T
     }
-    # Redefinir T si es que este fuera None
+
+    # Define T as default, if None was given
     T = 100 if T is None else T
-    # Instanciar solvers
+
+    # Building solvers
+    if verbose:
+        print("Building solvers...")
     solver_u = solver_u if solver_u is not None else Solver1U
     solver_R = solver_R if solver_R is not None else Solver1R
     R = solver_R(m_2, R_in, r, K, u_0, R_0, **disc_configs)
     u = solver_u(m_1, eps, r, K, u_0, R_0, **disc_configs)
-    # Iterar sobre n
+    # Start iterations
+    if verbose:
+        print("Starting iterations")
+    time_iter = 0
     for n in range(T):
+        start_iter = time.time()
+
         u.actualize_row(R[n], n)
         u.actualize_step_np1(n)
         R.actualize_row(u[n + 1], n + 1)
         R.actualize_step_np1(n)
+
+        time_iter += time.time() - start_iter
+
+        if verbose and n % reports_every == 0:
+            sys.stdout.write(f"\rIteration n = {n}, "
+                             + "Total Time: {0:.3f}[seg], ".format(time_iter)
+                             + "Time/Iter: {0:.3f}[seg]".format(time_iter / (n + 1)))
+    if verbose:
+        print()
     return u, R
 
 
@@ -308,6 +328,11 @@ class Solver2R(AbstractSolverR):
     """
     Solver that uses the second equation proposed in the paper.
     """
+
+    def __init__(self, m_2, R_in, r, K, u_0, R_0, **kwargs):
+        AbstractSolverR.__init__(self, m_2, R_in, r, K, u_0, R_0, **kwargs)
+        # Update the quasi-static equation (does not matters the inicial data)
+        self._R[0] = self.R_in / (self.m_2 + self._G[0])
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
         if not self._is_row_calculated(n + 1):
