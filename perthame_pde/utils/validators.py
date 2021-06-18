@@ -207,18 +207,22 @@ class DiscreteFunctionValidator(MatrixValidator):
                             + f" Currently is {type(value).__name__}.")
         # If it is an array, make an instance to ensure the operations
         if is_ndarray:
-            value = np.array(value)
-        # Case shape does not fit
-        if is_ndarray and len(value.shape) != size:
-            raise ValueError(f"The dimensions of '{self.public_name}' must be {size}."
-                             + f" Currently is {len(value)}.")
-        # Case dimensions does not fit
-        if is_ndarray and value.shape != tuple_to_compare:
-            raise ValueError(f"The dimensions of '{self.public_name}' must be equals to {tuple_to_compare}."
-                             + f" Currently is {value.shape}.")
+            value = np.asarray(value)
+            # Case shape does not fit
+            if len(value.shape) != size:
+                raise ValueError(f"The dimensions of '{self.public_name}' must be {size}."
+                                 + f" Currently is {len(value.shape)}.")
+            # Case dimensions does not fit
+            if value.shape != tuple_to_compare:
+                raise ValueError(f"The dimensions of '{self.public_name}' must be equals to {tuple_to_compare}."
+                                 + f" Currently is {value.shape}.")
 
 
 class InitialDiscreteFunctionValidator(DiscreteFunctionValidator):
+    def __init__(self, x=None, y=None):
+        super().__init__(x, y)
+        self.dict_bnd_obj = None
+
     def transform_discrete_function(self, obj, value):
         if self.x is None and self.y is None:
             return value
@@ -226,7 +230,7 @@ class InitialDiscreteFunctionValidator(DiscreteFunctionValidator):
         if isinstance(value, np.ndarray):
             func_to_return[0] = value
             return func_to_return
-        y = np.linspace(*obj.y_lims, self.dict_obj[self.y])
+        y = np.linspace(*self.dict_bnd_obj[self.y], self.dict_obj[self.y])
         func_to_return[0] = np.array([value(y_) for y_ in y])
         return func_to_return
 
@@ -235,6 +239,7 @@ class InitialDiscreteFunctionValidator(DiscreteFunctionValidator):
             return None
         # Dictionary to save the current setting
         self.dict_obj = {"x": obj.N + 2, "y": obj.M + 2, "t": obj.T + 1, None: None}
+        self.dict_bnd_obj = {"x": obj.x_lims, "y": obj.y_lims, "t": (0, obj.T * obj.dt), None: None}
         # Make a tuple to compare
         y_size = self.dict_obj[self.y]
         tuple_to_compare = (y_size,)
@@ -247,12 +252,12 @@ class InitialDiscreteFunctionValidator(DiscreteFunctionValidator):
                             + f" Currently is {type(value).__name__}.")
         # If it is an array, make an instance to ensure the operations
         if is_ndarray:
-            value = np.array(value)
-        # Case shape does not fit
-        if is_ndarray and len(value.shape) != size:
-            raise ValueError(f"The dimensions of '{self.public_name}' must be {size}."
-                             + f" Currently is {len(value)}.")
-        # Case dimensions does not fit
-        if is_ndarray and value.shape != tuple_to_compare:
-            raise ValueError(f"The dimensions of '{self.public_name}' must be equals to {tuple_to_compare}."
-                             + f" Currently is {value.shape}.")
+            value = np.asarray(value)
+            # Case shape does not fit
+            if len(value.shape) != size:
+                raise ValueError(f"The dimensions of '{self.public_name}' must be {size}."
+                                 + f" Currently is {len(value.shape)}.")
+            # Case dimensions does not fit
+            if value.shape != tuple_to_compare:
+                raise ValueError(f"The dimensions of '{self.public_name}' must be equals to {tuple_to_compare}."
+                                 + f" Currently is {value.shape}.")
