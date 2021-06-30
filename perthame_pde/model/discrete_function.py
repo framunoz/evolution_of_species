@@ -53,6 +53,7 @@ class AbstractDiscreteFunction(ABC):
         T : int
             Number of points of the mesh t. Value by default is 100.
         """
+        # todo: hacer una clase mesh y hacer que esta clase tenga tres instancias de esta clase
         self.x_lims = x_lims if x_lims is not None else (0, 1)
         self.y_lims = y_lims if y_lims is not None else self.x_lims
         self.dt = dt if dt is not None else 0.01

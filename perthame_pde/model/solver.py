@@ -10,13 +10,14 @@ import time
 import warnings
 from abc import ABC, abstractmethod
 from functools import partial
+from typing import Tuple
 
 import numpy as np
 from scipy.integrate import simpson
 from scipy.interpolate import interp2d
+from scipy.sparse import dia_matrix
 from scipy.sparse import diags, csr_matrix
 from scipy.sparse.linalg import spsolve
-from scipy.sparse import dia_matrix
 
 from perthame_pde.model.discrete_function import AbstractDiscreteFunction
 from perthame_pde.model.integral_functional import FunctionalF, FunctionalG
@@ -142,6 +143,9 @@ class AbstractSolver(AbstractDiscreteFunction, ABC):
         self._warning_row_not_calculated()
         return self._calculate_total_mass()
 
+    # TODO: se podría cambiar las funciones interp2d por RectBivariateSpline, que son más eficientes, por el problema
+    #  que tenemos. Podría ayudarnos a calcular mejores integrales
+    #  https://scipython.com/book/chapter-8-scipy/examples/two-dimensional-interpolation-with-scipyinterpolaterectbivariatespline/
     def function_interpolated(self):
         """
         Returns the current function interpolated on the mesh
@@ -341,7 +345,7 @@ class Solver2U(AbstractSolverU):
         AbstractSolverU.__init__(self, m_1, r, K, u_0, R_0, eps, **kwargs)
         self.theta = theta
 
-    def _create_transition_matrices(self, n: int) -> tuple[csr_matrix, csr_matrix]:
+    def _create_transition_matrices(self, n: int) -> Tuple[csr_matrix, csr_matrix]:
         """
         Method to calculate the n step matrices associated with the u^(n+1) and u^(n).
         In the implicit formula: B * u^(n+1) = C * u^(n). Where u^(n) is the u vector at time n.
@@ -349,9 +353,9 @@ class Solver2U(AbstractSolverU):
         """
         # Calculates diagonals values
         A_n = -self.m_1 + self.r * self._F[n]
-        A_nn = -self.m_1 + self.r * self._F[n+1]
-        h_cuad = self.h1**2
-        alpha = self.dt/self.h1
+        A_nn = -self.m_1 + self.r * self._F[n + 1]
+        h_cuad = self.h1 ** 2
+        alpha = self.dt / self.h1
 
         a = -1 * self.theta * self.eps * alpha
         b = 1 + self.theta * alpha * (2* self.eps - h_cuad * A_nn)
@@ -372,17 +376,17 @@ class Solver2U(AbstractSolverU):
         C = diags(k2, offset).toarray()  # Define sparse diagonal matrix
         # Impose Neumman conditions
         B[0, 1] = a * 2
-        B[N + 1, N] = a * 2
+        B[self.N + 1, self.N] = a * 2
         B = csr_matrix(B)
         C[0, 1] = d * 2
-        C[N + 1, N] = d * 2
+        C[self.N + 1, self.N] = d * 2
         C = csr_matrix(C)
         return B, C
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
         if not self._is_row_calculated(n + 1):
             B, C = self._create_transition_matrices(n)
-            self._u[n + 1] = spsolve(B, C @ self._u[n])
+            self._u[n + 1] = spsolve(B, C.dot(self._u[n]))
             self._update_mask_row(n + 1, True)
         return self._u[n + 1]
 
