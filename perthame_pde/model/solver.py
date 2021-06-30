@@ -345,7 +345,7 @@ class Solver2U(AbstractSolverU):
         AbstractSolverU.__init__(self, m_1, r, K, u_0, R_0, eps, **kwargs)
         self.theta = theta
 
-    def _create_transition_matrices(self, n: int) -> Tuple[csr_matrix, csr_matrix]:
+    def _create_transition_matrices(self, n: int) -> Tuple[csr_matrix, dia_matrix]:
         """
         Method to calculate the n step matrices associated with the u^(n+1) and u^(n).
         In the implicit formula: B * u^(n+1) = C * u^(n). Where u^(n) is the u vector at time n.
@@ -354,20 +354,19 @@ class Solver2U(AbstractSolverU):
         # Calculates diagonals values
         A_n = -self.m_1 + self.r * self._F[n]
         A_nn = -self.m_1 + self.r * self._F[n + 1]
-        h_cuad = self.h1 ** 2
-        alpha = self.dt / self.h1
+        h_sqrt = self.h1 ** 2
+        alpha = self.dt / h_sqrt
 
-        a = -1 * self.theta * self.eps * alpha
-        b = 1 + self.theta * alpha * (2* self.eps - h_cuad * A_nn)
+        a = -self.theta * self.eps * alpha
+        b = 1 + self.theta * alpha * (2 * self.eps - h_sqrt * A_nn)
 
-        d = -1 * (1-self.theta) * self.eps * alpha
-        c = 1 - (1-self.theta) * alpha * (2 * self.eps - h_cuad * A_n)
+        d = (1 - self.theta) * self.eps * alpha
+        c = 1 - (1 - self.theta) * alpha * (2 * self.eps - h_sqrt * A_n)
 
         # Auxiliary arrays
-        e = np.ones(self.N + 2)
         f = np.ones(self.N + 1)
-        k = np.array([a * f, b * e, a * f], dtype=object)
-        k2 = np.array([d * f, c * e, d * f], dtype=object)
+        k = np.array([a * f, b, a * f], dtype=object)
+        k2 = np.array([d * f, c, d * f], dtype=object)
 
         # Positions with respect to the diagonal on which the vectors will be placed
         offset = [-1, 0, 1]
@@ -380,7 +379,7 @@ class Solver2U(AbstractSolverU):
         B = csr_matrix(B)
         C[0, 1] = d * 2
         C[self.N + 1, self.N] = d * 2
-        C = csr_matrix(C)
+        C = dia_matrix(C)
         return B, C
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
