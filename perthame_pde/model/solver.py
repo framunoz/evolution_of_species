@@ -14,6 +14,8 @@ from functools import partial
 import numpy as np
 from scipy.integrate import simpson
 from scipy.interpolate import interp2d
+from scipy.sparse import diags, csr_matrix
+from scipy.sparse.linalg import spsolve
 
 from perthame_pde.model.discrete_function import AbstractDiscreteFunction
 from perthame_pde.model.integral_functional import FunctionalF, FunctionalG
@@ -336,8 +338,50 @@ class Solver2U(AbstractSolverU):
         AbstractSolverU.__init__(self, m_1, r, K, u_0, R_0, eps, **kwargs)
         self.theta = theta
 
+    def _create_transition_matrices(self, n: int) -> tuple[csr_matrix, csr_matrix]:
+        """
+        Method to calculate the n step matrices associated with the u^(n+1) and u^(n).
+        In the implicit formula: B * u^(n+1) = C * u^(n). Where u^(n) is the u vector at time n.
+        Return: B, C.
+        """
+        # Calculates diagonals values
+        A_n = -self.m_1 + self.r * self._F[n]
+        A_nn = -self.m_1 + self.r * self._F[n+1]
+        h_cuad = self.h1**2
+        alpha = self.dt/self.h1
+
+        a = -1 * self.theta * self.eps * alpha
+        b = 1 + self.theta * alpha * (2* self.eps - h_cuad * A_nn)
+
+        d = -1 * (1-self.theta) * self.eps * alpha
+        c = 1 - (1-self.theta) * alpha * (2 * self.eps - h_cuad * A_n)
+
+        # Auxiliary arrays
+        e = np.ones(self.N + 2)
+        f = np.ones(self.N + 1)
+        k = np.array([a * f, b * e, a * f], dtype=object)
+        k2 = np.array([d * f, c * e, d * f], dtype=object)
+
+        # Positions with respect to the diagonal on which the vectors will be placed
+        offset = [-1, 0, 1]
+
+        B = diags(k, offset).toarray()  # Define sparse diagonal matrix
+        C = diags(k2, offset).toarray()  # Define sparse diagonal matrix
+        # Impose Neumman conditions
+        B[0, 1] = a * 2
+        B[N + 1, N] = a * 2
+        B = csr_matrix(B)
+        C[0, 1] = d * 2
+        C[N + 1, N] = d * 2
+        C = csr_matrix(C)
+        return B, C
+
     def actualize_step_np1(self, n: int) -> np.ndarray:
-        raise NotImplementedError("Implementar!")
+        if not self._is_row_calculated(n + 1):
+            B, C = self._create_transition_matrices(n)
+            self._u[n + 1] = spsolve(B, C @ self._u[n])
+            self._update_mask_row(n + 1, True)
+        return self._u[n + 1]
 
     @classmethod
     def set_theta(cls, theta: float):
