@@ -16,6 +16,7 @@ from scipy.integrate import simpson
 from scipy.interpolate import interp2d
 from scipy.sparse import diags, csr_matrix
 from scipy.sparse.linalg import spsolve
+from scipy.sparse import dia_matrix
 
 from perthame_pde.model.discrete_function import AbstractDiscreteFunction
 from perthame_pde.model.integral_functional import FunctionalF, FunctionalG
@@ -77,12 +78,14 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0., solver_u=None, solver
         R.actualize_row(u[n + 1], n + 1)
         R.actualize_step_np1(n)
 
-        time_iter += time.time() - start_iter
+        d_time = time.time() - start_iter
+        time_iter += d_time
 
-        if verbose and n % reports_every == 0:
+        if verbose and (n % reports_every == 0 or n == T - 1):
             sys.stdout.write(f"\rIteration n = {n}, "
                              + "Total Time: {0:.3f}[seg], ".format(time_iter)
-                             + "Time/Iter: {0:.3f}[seg]".format(time_iter / (n + 1)))
+                             + "Time/Iter: {0:.3f}[ms], ".format(d_time * 1000)
+                             + "avg. Time/Iter: {0:.3f}[ms]".format(time_iter / (n + 1) * 1000))
     if verbose:
         print()
     return u, R
@@ -307,19 +310,19 @@ class Solver1U(AbstractSolverU):
     Solver that uses the first method for u.
     """
 
-    def _create_transition_matrix(self, n: int) -> np.ndarray:
+    def _create_transition_matrix(self, n: int) -> dia_matrix:
         # Calculates upper and lower diagonals
         alpha = self.eps * self.dt / self.h1 ** 2
-        alpha_array = np.ones((self.N + 1,)) * alpha
-        upper_matrix = np.diag(alpha_array, 1)
-        lower_matrix = np.diag(alpha_array, -1)
+        alpha_upper_array = np.ones((self.N + 2,)) * alpha
+        alpha_lower_array = np.copy(alpha_upper_array)
         # Replace the Neumann conditions
-        upper_matrix[0, 1] = lower_matrix[-1, -2] = 2 * alpha
+        alpha_upper_array[1] = alpha_lower_array[-2] = 2 * alpha
         # Calculates the central diagonal: beta
         A_n = -self.m_1 + self.r * self._F[n]
         beta_array = 1 - 2 * alpha + self.dt * A_n
-        central_matrix = np.diag(beta_array, 0)
-        return lower_matrix + central_matrix + upper_matrix
+        data = np.array([alpha_lower_array, beta_array, alpha_upper_array])
+        offset = np.array([-1, 0, 1])
+        return dia_matrix((data, offset), shape=(self.N + 2, self.N + 2))
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
         if not self._is_row_calculated(n + 1):
