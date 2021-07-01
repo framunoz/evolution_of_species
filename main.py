@@ -12,7 +12,7 @@ from perthame_pde.model.solver import solve_perthame, Solver1R, Solver2U
 x_lims = (-4, 4)
 y_lims = (-4, 4)
 N = 400
-M = N
+M = 100
 dt = 0.05
 T = 100
 
@@ -73,10 +73,10 @@ def R_0(y, R_max=R_MAX, mu_R=MU_R, sig_R=SIG_R) -> float:
 
 u, R = solve_perthame(
     u_0, R_0, r, R_in, m_1, m_2, K, EPS,
-    solver_R=Solver1R, solver_u=Solver2U,
+    solver_R=Solver1R, solver_u=Solver2U.set_theta(1),
     verbose=True, reports_every=50,
     **CONFIG_LIMITES
 )
 
 # print(u, R)
-print(u._F)
+print(u.F)

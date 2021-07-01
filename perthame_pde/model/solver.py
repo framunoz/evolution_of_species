@@ -207,7 +207,7 @@ class AbstractSolverU(AbstractSolver, ABC):
         self.m_1 = m_1
         self.eps = eps
         # Generates an instance of F
-        self._F = FunctionalF(K, R_0, **kwargs)
+        self.F = FunctionalF(K, R_0, **kwargs)
         # Matrix that represents the current function
         self._matrix = self._u
         self.R_solver = None
@@ -216,7 +216,7 @@ class AbstractSolverU(AbstractSolver, ABC):
         validate_nth_row(row, self._R[n])
         self._R[n] = row
         # Update the row of F
-        self._F.actualize_row(row, n)
+        self.F.actualize_row(row, n)
         return self
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
@@ -276,7 +276,7 @@ class AbstractSolverR(AbstractSolver, ABC):
         # Save m_2 and R_in
         self.m_2 = m_2
         self.R_in = R_in
-        self._G = FunctionalG(r, K, u_0, **kwargs)
+        self.G = FunctionalG(r, K, u_0, **kwargs)
         # Matrix that represents the current function
         self._matrix = self._R
         self.u_solver = None
@@ -285,7 +285,7 @@ class AbstractSolverR(AbstractSolver, ABC):
         validate_nth_row(row, self._u[n])
         self._u[n] = row
         # Update the row of G
-        self._G.actualize_row(row, n)
+        self.G.actualize_row(row, n)
         return self
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
@@ -313,7 +313,7 @@ class Solver1U(AbstractSolverU):
         # Replace the Neumann conditions
         alpha_upper_array[1] = alpha_lower_array[-2] = 2 * alpha
         # Calculates the central diagonal: beta
-        A_n = -self.m_1 + self.r * self._F[n]
+        A_n = -self.m_1 + self.r * self.F[n]
         beta_array = 1 - 2 * alpha + self.dt * A_n
         data = np.array([alpha_lower_array, beta_array, alpha_upper_array])
         offset = np.array([-1, 0, 1])
@@ -333,15 +333,23 @@ class Solver2U(AbstractSolverU):
         AbstractSolverU.__init__(self, m_1, r, K, u_0, R_0, eps, **kwargs)
         self.theta = theta
 
+    def _estimate_Fp1(self, n: int):
+        dt, m_2, G, R, R_in = (self.R_solver.dt, self.R_solver.m_2,
+                               self.R_solver.G, self.R_solver.R, self.R_solver.R_in)
+        estimated_Rp1 = (1 - dt * (m_2 + G[n])) * R[n] + dt * R_in
+        self.F.actualize_row(estimated_Rp1, n + 1)
+
     def _create_transition_matrices(self, n: int) -> Tuple[csr_matrix, dia_matrix]:
         """
         Method to calculate the n step matrices associated with the u^(n+1) and u^(n).
         In the implicit formula: B * u^(n+1) = C * u^(n). Where u^(n) is the u vector at time n.
         Return: B, C.
         """
+        # Update an estimation of F[n + 1]
+        self._estimate_Fp1(n)
         # Calculates diagonals values
-        A_n = -self.m_1 + self.r * self._F[n]
-        A_nn = -self.m_1 + self.r * self._F[n + 1]
+        A_n = -self.m_1 + self.r * self.F[n]
+        A_np1 = -self.m_1 + self.r * self.F[n + 1]
         h_sqrt = self.h1 ** 2
         alpha = self.dt / h_sqrt
 
@@ -351,7 +359,7 @@ class Solver2U(AbstractSolverU):
         a_upper = a * np.ones((self.N + 2,))
         a_lower = np.copy(a_upper)
         a_upper[1] = a_lower[-2] = 2 * a
-        b = 1 + self.theta * alpha * (2 * self.eps - h_sqrt * A_nn)
+        b = 1 + self.theta * alpha * (2 * self.eps - h_sqrt * A_np1)
         B_data = np.array([a_lower, b, a_upper])
         B = dia_matrix((B_data, offset), shape=(self.N + 2, self.N + 2)).tocsr()
 
@@ -388,7 +396,7 @@ class Solver1R(AbstractSolverR):
     """
 
     def _actualize_step_np1(self, n: int):
-        self._R[n + 1] = (1 - self.dt * (self.m_2 + self._G[n])) * self.R[n] + self.dt * self.R_in
+        self._R[n + 1] = (1 - self.dt * (self.m_2 + self.G[n])) * self.R[n] + self.dt * self.R_in
 
 
 class Solver2R(AbstractSolverR):
@@ -399,10 +407,10 @@ class Solver2R(AbstractSolverR):
     def __init__(self, m_2, R_in, r, K, u_0, R_0, **kwargs):
         AbstractSolverR.__init__(self, m_2, R_in, r, K, u_0, R_0, **kwargs)
         # Update the quasi-static equation (does not matters the inicial data)
-        self._R[0] = self.R_in / (self.m_2 + self._G[0])
+        self._R[0] = self.R_in / (self.m_2 + self.G[0])
 
     def _actualize_step_np1(self, n: int):
-        G_np1 = self._G[n + 1]
+        G_np1 = self.G[n + 1]
         R_np1 = self.R_in / (self.m_2 + G_np1)
         self._R[n + 1] = R_np1
 
@@ -413,7 +421,7 @@ class Solver3R(AbstractSolverR):
     """
 
     def _actualize_step_np1(self, n: int):
-        A_n = self.dt * (self.m_2 + self._G[n])
+        A_n = self.dt * (self.m_2 + self.G[n])
         B_n = self.dt * self.R_in
         if n == 0:
             self._R[n + 1] = (1 - A_n) * self.R[n] + B_n
