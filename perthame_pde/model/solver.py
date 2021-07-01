@@ -14,9 +14,9 @@ from typing import Tuple
 
 import numpy as np
 from scipy.integrate import simpson
-from scipy.interpolate import interp2d
+from scipy.interpolate import RectBivariateSpline
+from scipy.sparse import csr_matrix
 from scipy.sparse import dia_matrix
-from scipy.sparse import diags, csr_matrix
 from scipy.sparse.linalg import spsolve
 
 from perthame_pde.model.discrete_function import AbstractDiscreteFunction
@@ -37,6 +37,10 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0., solver_u=None, solver
     K(x, y) tasa de consumo del recurso y por los individuos de trait x
     eps tasa de mutación
     """
+    y_lims = y_lims if y_lims is not None else x_lims
+    M = M if M is not None else M
+    T = T if T is not None else 100
+
     # Building discrete functions as arrays
     if verbose:
         print("Creating arrays...")
@@ -67,6 +71,7 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0., solver_u=None, solver
     solver_R = solver_R if solver_R is not None else Solver1R
     R = solver_R(m_2, R_in, r, K, u_0, R_0, **disc_configs)
     u = solver_u(m_1, r, K, u_0, R_0, eps, **disc_configs)
+
     # Start iterations
     if verbose:
         print("Starting iterations")
@@ -143,9 +148,6 @@ class AbstractSolver(AbstractDiscreteFunction, ABC):
         self._warning_row_not_calculated()
         return self._calculate_total_mass()
 
-    # TODO: se podría cambiar las funciones interp2d por RectBivariateSpline, que son más eficientes, por el problema
-    #  que tenemos. Podría ayudarnos a calcular mejores integrales
-    #  https://scipython.com/book/chapter-8-scipy/examples/two-dimensional-interpolation-with-scipyinterpolaterectbivariatespline/
     def function_interpolated(self):
         """
         Returns the current function interpolated on the mesh
@@ -239,7 +241,7 @@ class AbstractSolverU(AbstractSolver, ABC):
         return simpson(self._matrix, x=self.x, axis=1)
 
     def _function_interpolated(self):
-        return interp2d(self.t, self.x, self.u.T)
+        return RectBivariateSpline(self.t, self.x, self.u)
 
 
 class AbstractSolverR(AbstractSolver, ABC):
@@ -306,7 +308,7 @@ class AbstractSolverR(AbstractSolver, ABC):
         return simpson(self._matrix, x=self.y, axis=1)
 
     def _function_interpolated(self):
-        return interp2d(self.t, self.y, self.R.T)
+        return RectBivariateSpline(self.t, self.y, self.R)
 
 
 class Solver1U(AbstractSolverU):
@@ -357,29 +359,41 @@ class Solver2U(AbstractSolverU):
         h_sqrt = self.h1 ** 2
         alpha = self.dt / h_sqrt
 
+        offset = np.array([-1, 0, 1])
+
         a = -self.theta * self.eps * alpha
+        a_upper = a * np.ones((self.N + 2,))
+        a_lower = np.copy(a_upper)
+        a_upper[1] = a_lower[-2] = 2 * a
         b = 1 + self.theta * alpha * (2 * self.eps - h_sqrt * A_nn)
+        B_data = np.array([a_lower, b, a_upper])
+        B = dia_matrix((B_data, offset), shape=(self.N + 2, self.N + 2)).tocsr()
 
         d = (1 - self.theta) * self.eps * alpha
+        d_upper = d * np.ones((self.N + 2,))
+        d_lower = np.copy(d_upper)
+        d_upper[1] = d_lower[-2] = 2 * d
         c = 1 - (1 - self.theta) * alpha * (2 * self.eps - h_sqrt * A_n)
+        C_data = np.array([d_lower, c, d_upper])
+        C = dia_matrix((C_data, offset), shape=(self.N + 2, self.N + 2))
 
-        # Auxiliary arrays
-        f = np.ones(self.N + 1)
-        k = np.array([a * f, b, a * f], dtype=object)
-        k2 = np.array([d * f, c, d * f], dtype=object)
-
-        # Positions with respect to the diagonal on which the vectors will be placed
-        offset = [-1, 0, 1]
-
-        B = diags(k, offset).toarray()  # Define sparse diagonal matrix
-        C = diags(k2, offset).toarray()  # Define sparse diagonal matrix
-        # Impose Neumman conditions
-        B[0, 1] = a * 2
-        B[self.N + 1, self.N] = a * 2
-        B = csr_matrix(B)
-        C[0, 1] = d * 2
-        C[self.N + 1, self.N] = d * 2
-        C = dia_matrix(C)
+        # # Auxiliary arrays
+        # f = np.ones(self.N + 1)
+        # k = np.array([a * f, b, a * f], dtype=object)
+        # k2 = np.array([d * f, c, d * f], dtype=object)
+        #
+        # # Positions with respect to the diagonal on which the vectors will be placed
+        # offset = [-1, 0, 1]
+        #
+        # B = diags(k, offset).toarray()  # Define sparse diagonal matrix
+        # C = diags(k2, offset).toarray()  # Define sparse diagonal matrix
+        # # Impose Neumman conditions
+        # B[0, 1] = a * 2
+        # B[self.N + 1, self.N] = a * 2
+        # B = csr_matrix(B)
+        # C[0, 1] = d * 2
+        # C[self.N + 1, self.N] = d * 2
+        # C = dia_matrix(C)
         return B, C
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
