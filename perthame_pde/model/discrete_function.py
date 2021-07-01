@@ -69,8 +69,6 @@ class AbstractDiscreteFunction(ABC):
         self.h2 = 1 / (self.M + 1)
         # Matrix unsigned
         self._matrix = None
-        # Mask for cache
-        self._mask = None
 
     def __repr__(self, space=2):
         tab = " " * space
@@ -85,89 +83,9 @@ class AbstractDiscreteFunction(ABC):
     def __getitem__(self, item: Union[int, Tuple[int, int]]):
         validate_index(item)
         if isinstance(item, int):
-            # Check if the values are already calculated
-            if not self._mask[item].all():
-                self._calculate_row(item)
             return self.matrix[item]
         if isinstance(item, tuple):
-            return self._calculate_component(*item)
-
-    def _calculate_component(self, i: int, j: int):
-        """
-        Calculates and update a specific component
-
-        Parameters
-        ----------
-        i: int
-            i-th row
-        j: int
-            j-th column
-        """
-        return self.matrix[i, j]
-
-    def _calculate_row(self, i: int):
-        """
-        Calculates and update a specific row
-        Parameters
-        ----------
-        i: int
-            i-th row
-        """
-        for j in range(self.matrix.shape[1]):
-            self._calculate_component(i, j)
-
-    def _update_mask_row(self, n: int, bool_to_update: bool = False) -> None:
-        """
-        Cleans the n-th row of the mask.
-
-        Parameters
-        ----------
-        n : int
-            A row of the mask.
-        """
-        if n < len(self._mask):
-            self._mask[n] = bool_to_update
-
-    def _create_mask(self) -> np.ndarray:
-        """
-        Creates a mask.
-
-        Returns
-        -------
-        np.ndarray
-            A mask with the same shape of the matrix representation
-        """
-        return np.zeros_like(self.matrix, dtype=bool)
-
-    def _is_component_calculated(self, i: int, j: int) -> bool:
-        """
-        Verify if the (i, j)-th component was calculated.
-
-        Parameters
-        ----------
-        i: int
-            i-th row
-        j: int
-            j-th column
-        """
-        if i < len(self._mask) and j < len(self._mask[i]):
-            return self._mask[i, j]
-        else:
-            return False
-
-    def _is_row_calculated(self, i: int) -> bool:
-        """
-        Verify if the i-th row was calculated.
-
-        Parameters
-        ----------
-        i: int
-            i-th row
-        """
-        if i < len(self._mask):
-            return self._mask[i].all()
-        else:
-            return False
+            return self.matrix[item]
 
     @property
     def matrix(self) -> np.ndarray:

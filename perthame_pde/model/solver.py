@@ -7,7 +7,6 @@
 # @Software : PyCharm
 import sys
 import time
-import warnings
 from abc import ABC, abstractmethod
 from functools import partial
 from typing import Tuple
@@ -145,21 +144,13 @@ class AbstractSolver(AbstractDiscreteFunction, ABC):
         """
         Calculates the total mass.
         """
-        self._warning_row_not_calculated()
         return self._calculate_total_mass()
 
     def function_interpolated(self):
         """
         Returns the current function interpolated on the mesh
         """
-        self._warning_row_not_calculated()
         return self._function_interpolated()
-
-    def _warning_row_not_calculated(self):
-        for n in range(len(self._mask)):
-            if not self._is_row_calculated(n):
-                warnings.warn(f"There is a row that has not yet been calculated. n = {n}", Warning, 2)
-                break
 
     @abstractmethod
     def _calculate_total_mass(self) -> np.ndarray:
@@ -225,16 +216,12 @@ class AbstractSolverU(AbstractSolver, ABC):
         self._F = FunctionalF(K, R_0, **kwargs)
         # Matrix that represents the current function
         self._matrix = self._u
-        self._mask = self._create_mask()
-        self._update_mask_row(0, True)
 
     def actualize_row(self, row: np.ndarray, n: int):
         validate_nth_row(row, self._R[n])
         self._R[n] = row
         # Update the row of F
         self._F.actualize_row(row, n)
-        # Update the mask
-        self._update_mask_row(n + 1, False)
         return self
 
     def _calculate_total_mass(self) -> np.ndarray:
@@ -292,16 +279,12 @@ class AbstractSolverR(AbstractSolver, ABC):
         self._G = FunctionalG(r, K, u_0, **kwargs)
         # Matrix that represents the current function
         self._matrix = self._R
-        self._mask = self._create_mask()
-        self._update_mask_row(0, True)
 
     def actualize_row(self, row: np.ndarray, n: int):
         validate_nth_row(row, self._u[n])
         self._u[n] = row
         # Update the row of G
         self._G.actualize_row(row, n)
-        # Update the mask
-        self._update_mask_row(n + 1, False)
         return self
 
     def _calculate_total_mass(self) -> np.ndarray:
@@ -331,9 +314,7 @@ class Solver1U(AbstractSolverU):
         return dia_matrix((data, offset), shape=(self.N + 2, self.N + 2))
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
-        if not self._is_row_calculated(n + 1):
-            self._u[n + 1] = self._create_transition_matrix(n).dot(self._u[n])
-            self._update_mask_row(n + 1, True)
+        self._u[n + 1] = self._create_transition_matrix(n).dot(self._u[n])
         return self._u[n + 1]
 
 
@@ -397,10 +378,8 @@ class Solver2U(AbstractSolverU):
         return B, C
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
-        if not self._is_row_calculated(n + 1):
-            B, C = self._create_transition_matrices(n)
-            self._u[n + 1] = spsolve(B, C.dot(self._u[n]))
-            self._update_mask_row(n + 1, True)
+        B, C = self._create_transition_matrices(n)
+        self._u[n + 1] = spsolve(B, C.dot(self._u[n]))
         return self._u[n + 1]
 
     @classmethod
@@ -422,9 +401,7 @@ class Solver1R(AbstractSolverR):
     """
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
-        if not self._is_row_calculated(n + 1):
-            self._R[n + 1] = (1 - self.dt * (self.m_2 + self._G[n])) * self.R[n] + self.dt * self.R_in
-            self._update_mask_row(n + 1, True)
+        self._R[n + 1] = (1 - self.dt * (self.m_2 + self._G[n])) * self.R[n] + self.dt * self.R_in
         return self._R[n + 1]
 
 
@@ -439,11 +416,9 @@ class Solver2R(AbstractSolverR):
         self._R[0] = self.R_in / (self.m_2 + self._G[0])
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
-        if not self._is_row_calculated(n + 1):
-            G_np1 = self._G[n + 1]
-            R_np1 = self.R_in / (self.m_2 + G_np1)
-            self._R[n + 1] = R_np1
-            self._update_mask_row(n + 1, True)
+        G_np1 = self._G[n + 1]
+        R_np1 = self.R_in / (self.m_2 + G_np1)
+        self._R[n + 1] = R_np1
         return self.R[n + 1]
 
 
@@ -453,12 +428,10 @@ class Solver3R(AbstractSolverR):
     """
 
     def actualize_step_np1(self, n: int) -> np.ndarray:
-        if not self._is_row_calculated(n + 1):
-            A_n = self.dt * (self.m_2 + self._G[n])
-            B_n = self.dt * self.R_in
-            if n == 0:
-                self._R[n + 1] = (1 - A_n) * self.R[n] + B_n
-            else:
-                self._R[n + 1] = self.R[n - 1] - 2 * A_n * self.R[n] + 2 * B_n
-            self._update_mask_row(n + 1, True)
+        A_n = self.dt * (self.m_2 + self._G[n])
+        B_n = self.dt * self.R_in
+        if n == 0:
+            self._R[n + 1] = (1 - A_n) * self.R[n] + B_n
+        else:
+            self._R[n + 1] = self.R[n - 1] - 2 * A_n * self.R[n] + 2 * B_n
         return self._R[n + 1]
