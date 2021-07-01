@@ -60,9 +60,6 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0., solver_u=None, solver
         "dt": dt, "T": T
     }
 
-    # Define T as default, if None was given
-    T = 100 if T is None else T
-
     # Building solvers
     if verbose:
         print("Building solvers...")
@@ -358,23 +355,6 @@ class Solver2U(AbstractSolverU):
         C_data = np.array([d_lower, c, d_upper])
         C = dia_matrix((C_data, offset), shape=(self.N + 2, self.N + 2))
 
-        # # Auxiliary arrays
-        # f = np.ones(self.N + 1)
-        # k = np.array([a * f, b, a * f], dtype=object)
-        # k2 = np.array([d * f, c, d * f], dtype=object)
-        #
-        # # Positions with respect to the diagonal on which the vectors will be placed
-        # offset = [-1, 0, 1]
-        #
-        # B = diags(k, offset).toarray()  # Define sparse diagonal matrix
-        # C = diags(k2, offset).toarray()  # Define sparse diagonal matrix
-        # # Impose Neumman conditions
-        # B[0, 1] = a * 2
-        # B[self.N + 1, self.N] = a * 2
-        # B = csr_matrix(B)
-        # C[0, 1] = d * 2
-        # C[self.N + 1, self.N] = d * 2
-        # C = dia_matrix(C)
         return B, C
 
     def actualize_step_np1(self, n: int) -> np.ndarray:

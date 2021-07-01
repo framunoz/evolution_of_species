@@ -82,10 +82,7 @@ class AbstractDiscreteFunction(ABC):
 
     def __getitem__(self, item: Union[int, Tuple[int, int]]):
         validate_index(item)
-        if isinstance(item, int):
-            return self.matrix[item]
-        if isinstance(item, tuple):
-            return self.matrix[item]
+        return self.matrix[item]
 
     @property
     def matrix(self) -> np.ndarray:
