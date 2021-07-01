@@ -63,10 +63,14 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0., solver_u=None, solver
     # Building solvers
     if verbose:
         print("Building solvers...")
+    # Build the solvers
     solver_u = solver_u if solver_u is not None else Solver1U
     solver_R = solver_R if solver_R is not None else Solver1R
     R = solver_R(m_2, R_in, r, K, u_0, R_0, **disc_configs)
     u = solver_u(m_1, r, K, u_0, R_0, eps, **disc_configs)
+    # Set the solvers
+    R.u_solver = u
+    u.R_solver = R
 
     # Start iterations
     if verbose:
@@ -75,9 +79,7 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0., solver_u=None, solver
     for n in range(T):
         start_iter = time.time()
 
-        u.actualize_row(R[n], n)
         u.actualize_step_np1(n)
-        R.actualize_row(u[n + 1], n + 1)
         R.actualize_step_np1(n)
 
         d_time = time.time() - start_iter
@@ -137,29 +139,24 @@ class AbstractSolver(AbstractDiscreteFunction, ABC):
         """
         pass
 
-    def calculate_total_mass(self) -> np.ndarray:
-        """
-        Calculates the total mass.
-        """
-        return self._calculate_total_mass()
-
-    def function_interpolated(self):
-        """
-        Returns the current function interpolated on the mesh
-        """
-        return self._function_interpolated()
-
     @abstractmethod
-    def _calculate_total_mass(self) -> np.ndarray:
+    def _actualize_step_np1(self, n: int):
         """
-        To use template pattern.
+        To use template pattern in 'actualize_step_np1'
         """
         pass
 
     @abstractmethod
-    def _function_interpolated(self):
+    def calculate_total_mass(self) -> np.ndarray:
         """
-        To use template pattern.
+        Calculates the total mass.
+        """
+        pass
+
+    @abstractmethod
+    def function_interpolated(self):
+        """
+        Returns the current function interpolated on the mesh
         """
         pass
 
@@ -213,6 +210,7 @@ class AbstractSolverU(AbstractSolver, ABC):
         self._F = FunctionalF(K, R_0, **kwargs)
         # Matrix that represents the current function
         self._matrix = self._u
+        self.R_solver = None
 
     def actualize_row(self, row: np.ndarray, n: int):
         validate_nth_row(row, self._R[n])
@@ -221,10 +219,15 @@ class AbstractSolverU(AbstractSolver, ABC):
         self._F.actualize_row(row, n)
         return self
 
-    def _calculate_total_mass(self) -> np.ndarray:
+    def actualize_step_np1(self, n: int) -> np.ndarray:
+        self.actualize_row(self.R_solver.R[n], n)
+        self._actualize_step_np1(n)
+        return self._u[n + 1]
+
+    def calculate_total_mass(self) -> np.ndarray:
         return simpson(self._matrix, x=self.x, axis=1)
 
-    def _function_interpolated(self):
+    def function_interpolated(self):
         return RectBivariateSpline(self.t, self.x, self.u)
 
 
@@ -276,6 +279,7 @@ class AbstractSolverR(AbstractSolver, ABC):
         self._G = FunctionalG(r, K, u_0, **kwargs)
         # Matrix that represents the current function
         self._matrix = self._R
+        self.u_solver = None
 
     def actualize_row(self, row: np.ndarray, n: int):
         validate_nth_row(row, self._u[n])
@@ -284,10 +288,15 @@ class AbstractSolverR(AbstractSolver, ABC):
         self._G.actualize_row(row, n)
         return self
 
-    def _calculate_total_mass(self) -> np.ndarray:
+    def actualize_step_np1(self, n: int) -> np.ndarray:
+        self.actualize_row(self.u_solver.u[n + 1], n + 1)
+        self._actualize_step_np1(n)
+        return self._R[n + 1]
+
+    def calculate_total_mass(self) -> np.ndarray:
         return simpson(self._matrix, x=self.y, axis=1)
 
-    def _function_interpolated(self):
+    def function_interpolated(self):
         return RectBivariateSpline(self.t, self.y, self.R)
 
 
@@ -310,9 +319,8 @@ class Solver1U(AbstractSolverU):
         offset = np.array([-1, 0, 1])
         return dia_matrix((data, offset), shape=(self.N + 2, self.N + 2))
 
-    def actualize_step_np1(self, n: int) -> np.ndarray:
+    def _actualize_step_np1(self, n: int):
         self._u[n + 1] = self._create_transition_matrix(n).dot(self._u[n])
-        return self._u[n + 1]
 
 
 class Solver2U(AbstractSolverU):
@@ -357,10 +365,9 @@ class Solver2U(AbstractSolverU):
 
         return B, C
 
-    def actualize_step_np1(self, n: int) -> np.ndarray:
+    def _actualize_step_np1(self, n: int):
         B, C = self._create_transition_matrices(n)
         self._u[n + 1] = spsolve(B, C.dot(self._u[n]))
-        return self._u[n + 1]
 
     @classmethod
     def set_theta(cls, theta: float):
@@ -380,9 +387,8 @@ class Solver1R(AbstractSolverR):
     Solver that uses the first equation proposed in the paper.
     """
 
-    def actualize_step_np1(self, n: int) -> np.ndarray:
+    def _actualize_step_np1(self, n: int):
         self._R[n + 1] = (1 - self.dt * (self.m_2 + self._G[n])) * self.R[n] + self.dt * self.R_in
-        return self._R[n + 1]
 
 
 class Solver2R(AbstractSolverR):
@@ -395,11 +401,10 @@ class Solver2R(AbstractSolverR):
         # Update the quasi-static equation (does not matters the inicial data)
         self._R[0] = self.R_in / (self.m_2 + self._G[0])
 
-    def actualize_step_np1(self, n: int) -> np.ndarray:
+    def _actualize_step_np1(self, n: int):
         G_np1 = self._G[n + 1]
         R_np1 = self.R_in / (self.m_2 + G_np1)
         self._R[n + 1] = R_np1
-        return self.R[n + 1]
 
 
 class Solver3R(AbstractSolverR):
@@ -407,11 +412,10 @@ class Solver3R(AbstractSolverR):
     Solver that uses the first equation proposed in the paper with a second order method.
     """
 
-    def actualize_step_np1(self, n: int) -> np.ndarray:
+    def _actualize_step_np1(self, n: int):
         A_n = self.dt * (self.m_2 + self._G[n])
         B_n = self.dt * self.R_in
         if n == 0:
             self._R[n + 1] = (1 - A_n) * self.R[n] + B_n
         else:
             self._R[n + 1] = self.R[n - 1] - 2 * A_n * self.R[n] + 2 * B_n
-        return self._R[n + 1]
