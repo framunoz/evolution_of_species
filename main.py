@@ -14,7 +14,7 @@ y_lims = (-4, 4)
 N = 400
 M = N
 dt = 0.05
-T = 1000
+T = 100
 
 CONFIG_LIMITES = {
     "x_lims": x_lims,
@@ -78,4 +78,5 @@ u, R = solve_perthame(
     **CONFIG_LIMITES
 )
 
-print(u, R)
+# print(u, R)
+print(u._F)

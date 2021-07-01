@@ -7,14 +7,14 @@
 # @Software : PyCharm
 
 from abc import ABC, abstractmethod
-from typing import Union, Callable
+from typing import Union, Callable, Tuple
 
 import numpy as np
 from scipy.integrate import simpson
 
 from perthame_pde.model.discrete_function import AbstractDiscreteFunction
 from perthame_pde.utils.validators import validate_nth_row, DiscreteFunctionValidator, \
-    InitialDiscreteFunctionValidator
+    InitialDiscreteFunctionValidator, validate_index
 
 OneDimDiscreteFunction = Union[np.ndarray, Callable[[float], float]]
 TwoDimDiscreteFunction = Union[np.ndarray, Callable[[float, float], float]]
@@ -29,6 +29,21 @@ class AbstractIntegralFunctional(AbstractDiscreteFunction, ABC):
     def __init__(self, K: TwoDimDiscreteFunction, **kwargs):
         AbstractDiscreteFunction.__init__(self, **kwargs)
         self.K = K
+
+    def __getitem__(self, item: Union[int, Tuple[int, int]]):
+        validate_index(item)
+        if isinstance(item, int):
+            return self._calculate_row(item)
+        if isinstance(item, tuple):
+            return self._calculate_component(*item)
+
+    @abstractmethod
+    def _calculate_row(self, n: int):
+        pass
+
+    def _calculate_component(self, n: int, j: int):
+        self._calculate_row(n)
+        return self.matrix[n, j]
 
     @abstractmethod
     def actualize_row(self, row: np.ndarray, n: int) -> None:
@@ -91,10 +106,6 @@ class FunctionalF(AbstractIntegralFunctional):
         self._matrix[n] = integral_array
         return self.matrix[n]
 
-    def _calculate_component(self, n: int, j: int):
-        self._calculate_row(n)
-        return self.matrix[n, j]
-
 
 class FunctionalG(AbstractIntegralFunctional):
     r = DiscreteFunctionValidator("x")
@@ -146,7 +157,3 @@ class FunctionalG(AbstractIntegralFunctional):
         integral_array = simpson(matrix_to_integrate, x=self.x, axis=0)
         self._matrix[n] = integral_array
         return self.matrix[n]
-
-    def _calculate_component(self, n: int, k: int):
-        self._calculate_row(n)
-        return self.matrix[n, k]
