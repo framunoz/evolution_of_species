@@ -87,7 +87,7 @@ class Boundary(Validator):
     def validate(self, obj, value):
         if not isinstance(value, tuple):
             raise TypeError(f"'{self.public_name}' must be a 'tuple'."
-                            + f" Currently is '{type(self.public_name).__name__}'.")
+                            + f" Currently is '{type(value).__name__}'.")
         if len(value) != 2:
             raise ValueError(f"'{self.public_name}' must be a length 2."
                              + f" Currently is {len(value)}.")
@@ -103,7 +103,7 @@ class Integer(Validator):
     def validate(self, obj, value):
         if not isinstance(value, int):
             raise TypeError(f"'{self.public_name}' must be an 'int'."
-                            + f" Currently is '{type(self.public_name).__name__}'")
+                            + f" Currently is '{type(value).__name__}'")
         if not value >= 0:
             raise ValueError(f"'{self.public_name}' must be greater or equals to 0.")
 
@@ -123,9 +123,9 @@ class Float(Validator):
         self.str_bounds = f"{str_low_bound}{self.lower_bound}, {self.upper_bound}{str_upp_bound}"
 
     def validate(self, obj, value):
-        if not isinstance(value, float):
+        if not isinstance(value, (float, int)):
             raise TypeError(f"'{self.public_name}' must be a 'float'."
-                            + f" Currently is '{type(self.public_name).__name__}'.")
+                            + f" Currently is '{type(value).__name__}'.")
         satisfied_lower_bound = value > self.lower_bound or (self.lower_bound_eq and value == self.lower_bound)
         satisfied_upper_bound = value < self.upper_bound or (self.upper_bound_eq and value == self.upper_bound)
         if not (satisfied_lower_bound and satisfied_upper_bound):
