@@ -9,7 +9,9 @@ import numpy as np
 
 from perthame_pde.model.solver import solve_perthame, Solver1R, Solver2U
 
-print(np.min([np.array([1, 2]), np.array([1, 3])]))
+print(np.min(
+    [np.min(arr) for arr in [np.array([1, 2]), np.array([1, 3, 0])]]
+))
 
 x_lims = (-4, 4)
 y_lims = (-4, 4)

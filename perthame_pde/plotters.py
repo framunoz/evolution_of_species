@@ -139,7 +139,7 @@ class Animar:
         Halla el mínimo y máximo de cada eje para que todos los datos de la figura calcen en los ejes.
         :return:
         """
-        x_min, x_max = np.min(self._x), np.max(self._x)
+        x_min, x_max = np.min([np.min(arr) for arr in self._x]), np.max([np.max(arr) for arr in self._x])
 
         y_min, y_max = np.min(self._funcs[0]), np.max(self._funcs[0])
         for i in range(1, len(self._funcs)):
