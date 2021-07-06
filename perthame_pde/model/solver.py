@@ -333,11 +333,12 @@ class Solver2U(AbstractSolverU):
         AbstractSolverU.__init__(self, m_1, r, K, u_0, R_0, eps, **kwargs)
         self.theta = theta
 
-    def _estimate_Fp1(self, n: int):
+    def _estimate_F_np1(self, n: int) -> np.ndarray:
         dt, m_2, G, R, R_in = (self.R_solver.dt, self.R_solver.m_2,
                                self.R_solver.G, self.R_solver.R, self.R_solver.R_in)
         estimated_Rp1 = (1 - dt * (m_2 + G[n])) * R[n] + dt * R_in
         self.F.actualize_row(estimated_Rp1, n + 1)
+        return self.F[n + 1]
 
     def _create_transition_matrices(self, n: int) -> Tuple[csr_matrix, dia_matrix]:
         """
@@ -345,11 +346,9 @@ class Solver2U(AbstractSolverU):
         In the implicit formula: B * u^(n+1) = C * u^(n). Where u^(n) is the u vector at time n.
         Return: B, C.
         """
-        # Update an estimation of F[n + 1]
-        self._estimate_Fp1(n)
         # Calculates diagonals values
         A_n = -self.m_1 + self.r * self.F[n]
-        A_np1 = -self.m_1 + self.r * self.F[n + 1]
+        A_np1 = -self.m_1 + self.r * self._estimate_F_np1(n)
         h_sqrt = self.h1 ** 2
         alpha = self.dt / h_sqrt
 

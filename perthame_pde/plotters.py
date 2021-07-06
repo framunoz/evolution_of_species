@@ -75,13 +75,13 @@ def crear_label_funcs(label, funcs, x, dt, NT, N):
     return label, funcs
 
 
-# TODO: Refactorizar esta clase
+# TODO: Refactor esta clase
 class Animar:
     ANIMAR = True
     TIEMPO_REAL = True
     MOSTRAR_TIEMPO = True
 
-    def __init__(self, x, NT, dt, funcs, fmt=None, label=None, prefijo='', T0=0., fps=30):
+    def __init__(self, x: list, NT, dt, funcs: dict, fmt=None, label=None, prefijo='', T0=0., fps=30):
         """
         :param x: Intervalo del dominio de las funciones. De largo N+2.
         :param NT: Número de sub-intervalos de tiempo.
@@ -96,14 +96,15 @@ class Animar:
         """
         # Información básica
         self._x = x
-        N = len(x) - 2
 
         self._dt = dt
         self._NT = NT
         self._T = NT * dt
         self._T0 = T0
 
-        self._label, self._funcs = crear_label_funcs(label, funcs, x, dt, NT, N)
+        self._label = np.asarray(funcs.keys())
+        self._funcs = np.asarray(funcs.values())
+
         self._fmt = validar_fmt(fmt, funcs)
 
         # Path en donde se guardará la imagen
@@ -214,8 +215,8 @@ class Animar:
         :param i:
         :return:
         """
-        for func, line in zip(self._funcs, self._lines):
-            line.set_data(self._x, func[i])
+        for x, func, line in zip(self._x, self._funcs, self._lines):
+            line.set_data(x, func[i])
 
     def _agregar_tiempo(self, i):
         if self.MOSTRAR_TIEMPO:
