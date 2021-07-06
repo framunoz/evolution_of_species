@@ -81,7 +81,7 @@ class Animar:
     TIEMPO_REAL = True
     MOSTRAR_TIEMPO = True
 
-    def __init__(self, x: list, NT, dt, funcs: dict, fmt=None, label=None, prefijo='', T0=0., fps=30):
+    def __init__(self, x: list, NT, dt, funcs: list, fmt=None, label=None, prefijo='', T0=0., fps=30):
         """
         :param x: Intervalo del dominio de las funciones. De largo N+2.
         :param NT: Número de sub-intervalos de tiempo.
@@ -102,8 +102,8 @@ class Animar:
         self._T = NT * dt
         self._T0 = T0
 
-        self._label = np.asarray(funcs.keys())
-        self._funcs = np.asarray(funcs.values())
+        self._label = np.asarray(label)
+        self._funcs = np.asarray(funcs)
 
         self._fmt = validar_fmt(fmt, funcs)
 
@@ -118,7 +118,7 @@ class Animar:
         # Setear figure y axes
         self._fig = None
         self._ax = None
-        self._lines = None
+        self._lines = []
 
     @property
     def funcs(self):
@@ -203,7 +203,6 @@ class Animar:
         Crea tantas lineas como funciones haya y los agrega al eje.
         :return:
         """
-        self._lines = []
         for i in range(len(self._funcs)):
             line, = self._ax.plot([], [], self._fmt[i],
                                   label=self._label[i], lw=2)
