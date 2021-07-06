@@ -379,7 +379,7 @@ class Solver2U(AbstractSolverU):
     @classmethod
     def set_theta(cls, theta: float):
         """
-        Factory method that sets the theta value before init the class.
+        Factory method that sets the theta value before init the class. 0 explicit, 1 implicit.
 
         Parameters
         ----------
