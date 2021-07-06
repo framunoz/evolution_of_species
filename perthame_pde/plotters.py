@@ -102,8 +102,8 @@ class Animar:
         self._T = NT * dt
         self._T0 = T0
 
-        self._label = np.asarray(label)
-        self._funcs = np.asarray(funcs)
+        self._label = label
+        self._funcs = funcs
 
         self._fmt = validar_fmt(fmt, funcs)
 
