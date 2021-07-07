@@ -93,7 +93,7 @@ class FunctionalF(AbstractIntegralFunctional):
         # Create R function
         self.R = R_0
         # Create the internal representation
-        self._matrix = np.zeros((self.T + 1, self.N + 2))
+        self._matrix = np.zeros((self.t.T + 1, self.x.N + 2))
 
     def actualize_row(self, row: np.ndarray, n: int):
         validate_nth_row(row, self.R[n])
@@ -102,7 +102,7 @@ class FunctionalF(AbstractIntegralFunctional):
 
     def _calculate_row(self, n: int):
         matrix_to_integrate = self.K * self.R[n].reshape(1, -1)
-        integral_array = simpson(matrix_to_integrate, x=self.y, axis=1)
+        integral_array = simpson(matrix_to_integrate, x=self.y.mesh, axis=1)
         self._matrix[n] = integral_array
         return self.matrix[n]
 
@@ -145,7 +145,7 @@ class FunctionalG(AbstractIntegralFunctional):
         # Create u function
         self.u = u_0
         # Create the internal representation
-        self._matrix = np.zeros((self.T + 1, self.M + 2))
+        self._matrix = np.zeros((self.t.T + 1, self.y.M + 2))
 
     def actualize_row(self, row: np.ndarray, n: int):
         validate_nth_row(row, self._u[n])
@@ -154,6 +154,6 @@ class FunctionalG(AbstractIntegralFunctional):
 
     def _calculate_row(self, n: int):
         matrix_to_integrate = (self.r.reshape(-1, 1) * self.K) * self.u[n].reshape(-1, 1)
-        integral_array = simpson(matrix_to_integrate, x=self.x, axis=0)
+        integral_array = simpson(matrix_to_integrate, x=self.x.mesh, axis=0)
         self._matrix[n] = integral_array
         return self.matrix[n]

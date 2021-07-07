@@ -182,11 +182,11 @@ class DiscreteFunctionValidator(MatrixValidator):
             return value
         if isinstance(value, np.ndarray):
             return value
-        x = np.linspace(*obj.x_lims, self.dict_obj[self.x])
+        x = np.linspace(*obj.x.lims, self.dict_obj[self.x])
         if self.dict_obj[self.y] is None:
             func_to_return = np.array([value(x_) for x_ in x])
         else:
-            y = np.linspace(*obj.y_lims, self.dict_obj[self.y])
+            y = np.linspace(*obj.y.lims, self.dict_obj[self.y])
             func_to_return = np.array([[value(x_, y_) for y_ in y] for x_ in x])
         return func_to_return
 
@@ -194,7 +194,7 @@ class DiscreteFunctionValidator(MatrixValidator):
         if self.x is None and self.y is None:
             return None
         # Dictionary to save the current setting
-        self.dict_obj = {"x": obj.N + 2, "y": obj.M + 2, "t": obj.T + 1, None: None}
+        self.dict_obj = {"x": obj.x.N + 2, "y": obj.y.M + 2, "z": obj.z.O + 2, "t": obj.t.T + 1, None: None}
         # Make a tuple to compare
         x_size, y_size = self.dict_obj[self.x], self.dict_obj[self.y]
         tuple_to_compare = (x_size, y_size) if y_size is not None else (x_size,)
@@ -238,8 +238,8 @@ class InitialDiscreteFunctionValidator(DiscreteFunctionValidator):
         if self.x is None and self.y is None:
             return None
         # Dictionary to save the current setting
-        self.dict_obj = {"x": obj.N + 2, "y": obj.M + 2, "t": obj.T + 1, None: None}
-        self.dict_bnd_obj = {"x": obj.x_lims, "y": obj.y_lims, "t": (0, obj.T * obj.dt), None: None}
+        self.dict_obj = {"x": obj.x.N + 2, "y": obj.y.M + 2, "z": obj.z.O + 2, "t": obj.t.T + 1, None: None}
+        self.dict_bnd_obj = {"x": obj.x.lims, "y": obj.y.lims, "z": obj.z.lims, "t": obj.t.lims, None: None}
         # Make a tuple to compare
         y_size = self.dict_obj[self.y]
         tuple_to_compare = (y_size,)

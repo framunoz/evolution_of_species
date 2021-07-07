@@ -29,11 +29,11 @@ def solve_perthame(u_0, R_0, r, R_in, m_1, m_2, K, eps=0., solver_u=None, solver
     """
     u_0(x) cond inicial de u
     R_0(y) cond inicial de R
-    r(x) tasa de crecimiento dependiente del trait
+    r_u(x) tasa de crecimiento dependiente del trait
     R_in(y) Trait dependent resource-supply rate
-    m_1(x) tasa de mortalidad de las especies consumidoras
-    m_2(y) Tasa de decaimiento de los recursos
-    K(x, y) tasa de consumo del recurso y por los individuos de trait x
+    m_u(x) tasa de mortalidad de las especies consumidoras
+    m_R(y) Tasa de decaimiento de los recursos
+    K_uR(x, y) tasa de consumo del recurso y por los individuos de trait x
     eps tasa de mutación
     """
     y_lims = y_lims if y_lims is not None else x_lims
@@ -100,15 +100,15 @@ class AbstractSolver(AbstractDiscreteFunction, ABC):
     Abstract class for general solvers.
     """
     r = DiscreteFunctionValidator("x")
-    K = DiscreteFunctionValidator("x", "y")
+    K_uR = DiscreteFunctionValidator("x", "y")
     u = InitialDiscreteFunctionValidator("t", "x")
     R = InitialDiscreteFunctionValidator("t", "y")
 
-    def __init__(self, r, K, u_0, R_0, **kwargs):
+    def __init__(self, r_u, K_uR, u_0, R_0, **kwargs):
         AbstractDiscreteFunction.__init__(self, **kwargs)
-        # Save r and K
-        self.r = r
-        self.K = K
+        # Save r_u and K_uR
+        self.r = r_u
+        self.K_uR = K_uR
         # Create functions with initial data
         self.u = u_0
         self.R = R_0
@@ -166,21 +166,21 @@ class AbstractSolverU(AbstractSolver, ABC):
     Abstract class for function solvers of u.
     """
     eps = Float(lower_bound=(0, True))
-    m_1 = DiscreteFunctionValidator("x")
+    m_u = DiscreteFunctionValidator("x")
 
-    def __init__(self, m_1, r, K, u_0, R_0, eps=0., **kwargs):
+    def __init__(self, m_u, r_u, K_uR, u_0, R_0, eps=0., **kwargs):
         """
         Constructor.
 
         Parameters
         ----------
-        m_1 : function or array[N+2,]
+        m_u : function or array[N+2,]
             Mortality of consumer species.
         eps : float
             Mutation rate.
-        r : function or array[N+2,]
+        r_u : function or array[N+2,]
             Trait dependent growth rate.
-        K : function or array[N+2, M+2]
+        K_uR : function or array[N+2, M+2]
             Consumption rate of resource y by individuals of trait x.
         u_0 : function or array[N+2,]
             Initial data of the Consumer species distribution.
@@ -202,12 +202,12 @@ class AbstractSolverU(AbstractSolver, ABC):
         T : int
             Number of points of the mesh t. Value by default is 100.
         """
-        AbstractSolver.__init__(self, r, K, u_0, R_0, **kwargs)
-        # Save m_1
-        self.m_1 = m_1
+        AbstractSolver.__init__(self, r_u, K_uR, u_0, R_0, **kwargs)
+        # Save m_u
+        self.m_u = m_u
         self.eps = eps
         # Generates an instance of F
-        self.F = FunctionalF(K, R_0, **kwargs)
+        self.F = FunctionalF(K_uR, R_0, **kwargs)
         # Matrix that represents the current function
         self._matrix = self._u
         self.R_solver = None
@@ -225,32 +225,32 @@ class AbstractSolverU(AbstractSolver, ABC):
         return self._u[n + 1]
 
     def calculate_total_mass(self) -> np.ndarray:
-        return simpson(self._matrix, x=self.x, axis=1)
+        return simpson(self._matrix, x=self.x.mesh, axis=1)
 
     def function_interpolated(self):
-        return RectBivariateSpline(self.t, self.x, self.u)
+        return RectBivariateSpline(self.t.mesh, self.x.mesh, self.u)
 
 
 class AbstractSolverR(AbstractSolver, ABC):
     """
     Abstract class for function solvers of R.
     """
-    m_2 = DiscreteFunctionValidator("y")
+    m_R = DiscreteFunctionValidator("y")
     R_in = DiscreteFunctionValidator("y")
 
-    def __init__(self, m_2, R_in, r, K, u_0, R_0, **kwargs):
+    def __init__(self, m_R, R_in, r_u, K_uR, u_0, R_0, **kwargs):
         """
         Constructor.
 
         Parameters
         ----------
-        m_2 : function or array[M+2,]
+        m_R : function or array[M+2,]
             Decay rate of resource.
         R_in : function or array[M+2,]
             Trait dependent resource-supply rate.
-        r : function or array[N+2,]
+        r_u : function or array[N+2,]
             Trait dependent growth rate.
-        K : function or array[N+2, M+2]
+        K_uR : function or array[N+2, M+2]
             Consumption rate of resource y by individuals of trait x.
         u_0 : function or array[N+2,]
             Initial data of the Consumer species distribution.
@@ -272,11 +272,11 @@ class AbstractSolverR(AbstractSolver, ABC):
         T : int
             Number of points of the mesh t. Value by default is 100.
         """
-        AbstractSolver.__init__(self, r, K, u_0, R_0, **kwargs)
-        # Save m_2 and R_in
-        self.m_2 = m_2
+        AbstractSolver.__init__(self, r_u, K_uR, u_0, R_0, **kwargs)
+        # Save m_R and R_in
+        self.m_R = m_R
         self.R_in = R_in
-        self.G = FunctionalG(r, K, u_0, **kwargs)
+        self.G = FunctionalG(r_u, K_uR, u_0, **kwargs)
         # Matrix that represents the current function
         self._matrix = self._R
         self.u_solver = None
@@ -294,10 +294,10 @@ class AbstractSolverR(AbstractSolver, ABC):
         return self._R[n + 1]
 
     def calculate_total_mass(self) -> np.ndarray:
-        return simpson(self._matrix, x=self.y, axis=1)
+        return simpson(self._matrix, x=self.y.mesh, axis=1)
 
     def function_interpolated(self):
-        return RectBivariateSpline(self.t, self.y, self.R)
+        return RectBivariateSpline(self.t.mesh, self.y.mesh, self.R)
 
 
 class Solver1U(AbstractSolverU):
@@ -307,17 +307,17 @@ class Solver1U(AbstractSolverU):
 
     def _create_transition_matrix(self, n: int) -> dia_matrix:
         # Calculates upper and lower diagonals
-        alpha = self.eps * self.dt / self.h1 ** 2
-        alpha_upper_array = np.ones((self.N + 2,)) * alpha
+        alpha = self.eps * self.t.dt / self.x.dx ** 2
+        alpha_upper_array = np.ones((self.x.N + 2,)) * alpha
         alpha_lower_array = np.copy(alpha_upper_array)
         # Replace the Neumann conditions
         alpha_upper_array[1] = alpha_lower_array[-2] = 2 * alpha
         # Calculates the central diagonal: beta
-        A_n = -self.m_1 + self.r * self.F[n]
-        beta_array = 1 - 2 * alpha + self.dt * A_n
+        A_n = -self.m_u + self.r * self.F[n]
+        beta_array = 1 - 2 * alpha + self.t.dt * A_n
         data = np.array([alpha_lower_array, beta_array, alpha_upper_array])
         offset = np.array([-1, 0, 1])
-        return dia_matrix((data, offset), shape=(self.N + 2, self.N + 2))
+        return dia_matrix((data, offset), shape=(self.x.N + 2, self.x.N + 2))
 
     def _actualize_step_np1(self, n: int):
         self._u[n + 1] = self._create_transition_matrix(n).dot(self._u[n])
@@ -329,12 +329,12 @@ class Solver2U(AbstractSolverU):
     """
     theta = Float(lower_bound=(0, True), upper_bound=(1, True))
 
-    def __init__(self, m_1, r, K, u_0, R_0, eps=0., theta=0.5, **kwargs):
-        AbstractSolverU.__init__(self, m_1, r, K, u_0, R_0, eps, **kwargs)
+    def __init__(self, m_u, r_u, K_uR, u_0, R_0, eps=0., theta=0.5, **kwargs):
+        AbstractSolverU.__init__(self, m_u, r_u, K_uR, u_0, R_0, eps, **kwargs)
         self.theta = theta
 
     def _estimate_F_np1(self, n: int) -> np.ndarray:
-        dt, m_2, G, R, R_in = (self.R_solver.dt, self.R_solver.m_2,
+        dt, m_2, G, R, R_in = (self.R_solver.t.dt, self.R_solver.m_R,
                                self.R_solver.G, self.R_solver.R, self.R_solver.R_in)
         estimated_Rp1 = (1 - dt * (m_2 + G[n])) * R[n] + dt * R_in
         self.F.actualize_row(estimated_Rp1, n + 1)
@@ -347,28 +347,28 @@ class Solver2U(AbstractSolverU):
         Return: B, C.
         """
         # Calculates diagonals values
-        A_n = -self.m_1 + self.r * self.F[n]
-        A_np1 = -self.m_1 + self.r * self._estimate_F_np1(n)
-        h_sqrt = self.h1 ** 2
-        alpha = self.dt / h_sqrt
+        A_n = -self.m_u + self.r * self.F[n]
+        A_np1 = -self.m_u + self.r * self._estimate_F_np1(n)
+        h_sqrt = self.x.dx ** 2
+        alpha = self.t.dt / h_sqrt
 
         offset = np.array([-1, 0, 1])
 
         a = -self.theta * self.eps * alpha
-        a_upper = a * np.ones((self.N + 2,))
+        a_upper = a * np.ones((self.x.N + 2,))
         a_lower = np.copy(a_upper)
         a_upper[1] = a_lower[-2] = 2 * a
         b = 1 + self.theta * alpha * (2 * self.eps - h_sqrt * A_np1)
         B_data = np.array([a_lower, b, a_upper])
-        B = dia_matrix((B_data, offset), shape=(self.N + 2, self.N + 2)).tocsr()
+        B = dia_matrix((B_data, offset), shape=(self.x.N + 2, self.x.N + 2)).tocsr()
 
         d = (1 - self.theta) * self.eps * alpha
-        d_upper = d * np.ones((self.N + 2,))
+        d_upper = d * np.ones((self.x.N + 2,))
         d_lower = np.copy(d_upper)
         d_upper[1] = d_lower[-2] = 2 * d
         c = 1 - (1 - self.theta) * alpha * (2 * self.eps - h_sqrt * A_n)
         C_data = np.array([d_lower, c, d_upper])
-        C = dia_matrix((C_data, offset), shape=(self.N + 2, self.N + 2))
+        C = dia_matrix((C_data, offset), shape=(self.x.N + 2, self.x.N + 2))
 
         return B, C
 
@@ -395,7 +395,7 @@ class Solver1R(AbstractSolverR):
     """
 
     def _actualize_step_np1(self, n: int):
-        self._R[n + 1] = (1 - self.dt * (self.m_2 + self.G[n])) * self.R[n] + self.dt * self.R_in
+        self._R[n + 1] = (1 - self.t.dt * (self.m_R + self.G[n])) * self.R[n] + self.t.dt * self.R_in
 
 
 class Solver2R(AbstractSolverR):
@@ -403,14 +403,14 @@ class Solver2R(AbstractSolverR):
     Solver that uses the second equation proposed in the paper.
     """
 
-    def __init__(self, m_2, R_in, r, K, u_0, R_0, **kwargs):
-        AbstractSolverR.__init__(self, m_2, R_in, r, K, u_0, R_0, **kwargs)
+    def __init__(self, m_R, R_in, r_u, K_uR, u_0, R_0, **kwargs):
+        AbstractSolverR.__init__(self, m_R, R_in, r_u, K_uR, u_0, R_0, **kwargs)
         # Update the quasi-static equation (does not matters the inicial data)
-        self._R[0] = self.R_in / (self.m_2 + self.G[0])
+        self._R[0] = self.R_in / (self.m_R + self.G[0])
 
     def _actualize_step_np1(self, n: int):
         G_np1 = self.G[n + 1]
-        R_np1 = self.R_in / (self.m_2 + G_np1)
+        R_np1 = self.R_in / (self.m_R + G_np1)
         self._R[n + 1] = R_np1
 
 
@@ -420,8 +420,8 @@ class Solver3R(AbstractSolverR):
     """
 
     def _actualize_step_np1(self, n: int):
-        A_n = self.dt * (self.m_2 + self.G[n])
-        B_n = self.dt * self.R_in
+        A_n = self.t.dt * (self.m_R + self.G[n])
+        B_n = self.t.dt * self.R_in
         if n == 0:
             self._R[n + 1] = (1 - A_n) * self.R[n] + B_n
         else:
