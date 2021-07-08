@@ -1,7 +1,7 @@
 # !/usr/bin/python3
 # -*-coding utf-8 -*-
 # @Time     : 2021/06/11 10:59
-# @Author   : Francisco Muñoz
+# @Author   : Francisco Muñoz, Valentina Gómez
 # @Project  : evolution_of_species
 # @File     : solver.py
 # @Software : PyCharm

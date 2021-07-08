@@ -1,7 +1,7 @@
 # !/usr/bin/python3
 # -*-coding utf-8 -*-
 # @Time     : 2021/06/17 11:13
-# @Author   : Francisco Muñoz
+# @Author   : Francisco Muñoz, Juan Pablo Bravo
 # @Project  : evolution_of_species
 # @File     : plotters.py
 # @Software : PyCharm
