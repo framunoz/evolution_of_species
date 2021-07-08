@@ -29,7 +29,7 @@ def plot_phase_plane(u: AbstractSolverU, R: AbstractSolverR,
     if ax_config is None:
         ax_config = {
             "title": "Trayectorias en el plano de fase (R, u)",
-            "xlabel": "Masa total de recursos",
+            "xlabel": "Masa total de los recursos",
             "ylabel": "Masa total de la población",
             "xlim": (x.min(), x.max()),
             "ylim": (y.min(), y.max()),
@@ -50,7 +50,8 @@ def plot_phase_plane(u: AbstractSolverU, R: AbstractSolverR,
     lc.set_array(t)
     lc.set_linewidth(2)
     line = ax.add_collection(lc)
-    fig.colorbar(line, ax=ax)
+    cbar = fig.colorbar(line, ax=ax)
+    cbar.ax.set_ylabel("Tiempo", rotation=270)
 
     plt.show()
 
@@ -77,8 +78,8 @@ def plot_total_mass(u: AbstractSolverU, R: AbstractSolverR,
     valores_u = u.calculate_total_mass()
     valores_R = R.calculate_total_mass()
 
-    plt.plot(valores_t, valores_u, fmt=fmt[0], label=label[0])
-    plt.plot(valores_t, valores_R, fmt=fmt[1], label=label[1])
+    plt.plot(valores_t, valores_u, fmt[0], label=label[0])
+    plt.plot(valores_t, valores_R, fmt[1], label=label[1])
 
     plt.legend(ncol=2, loc="best", prop={'size': 12})
 
