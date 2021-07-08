@@ -118,8 +118,8 @@ def plot_anim(u: AbstractSolverU, R: AbstractSolverR,
         }
     if ax_config is None:
         ax_config = {}
-    t_min = t_min if t_min is not None else 0
-    t_max = t_max if t_max is not None else u.t.T
+    t_min = int(t_min / u.t.dt) if t_min is not None else 0
+    t_max = int(t_max / u.t.dt) if t_max is not None else u.t.T
     fmt = fmt if fmt is not None else ["-", "-."]
     label = label if label is not None else ["rasgo", "recurso"]
     T0 = T0 if T0 is not None else u.t.dt * t_min
