@@ -25,14 +25,16 @@ def plot_phase_plane(u: AbstractSolverU, R: AbstractSolverR,
     x = R.calculate_total_mass()
     y = u.calculate_total_mass()
     t = R.t.mesh
+    x_delay = eps * max(abs(x.min()), abs(x.max()))
+    y_delay = eps * max(abs(y.min()), abs(y.max()))
 
     if ax_config is None:
         ax_config = {
             "title": "Trayectorias en el plano de fase (R, u)",
             "xlabel": "Masa total de los recursos",
             "ylabel": "Masa total de la población",
-            "xlim": (x.min() - eps * abs(x.min()), x.max() + eps * abs(x.max())),
-            "ylim": (y.min() - eps * abs(y.min()), y.max() + eps * abs(y.max())),
+            "xlim": (x.min() - x_delay, x.max() + x_delay),
+            "ylim": (y.min() - y_delay, y.max() + y_delay),
         }
     if fig_config is None:
         fig_config = {
