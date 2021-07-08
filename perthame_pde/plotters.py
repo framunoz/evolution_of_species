@@ -20,6 +20,22 @@ from perthame_pde.model.solver import AbstractSolverU, AbstractSolverR
 _FIGSIZE = (10, 5)
 
 
+def plot_contour_line(u: AbstractSolverU, t_min=None, t_max=None, n_lines=30):
+    t_min = int(t_min / u.t.dt) if t_min is not None else 0
+    t_max = int(t_max / u.t.dt) if t_max is not None else u.t.T
+
+    fig = plt.figure(figsize=(12.5, 5))
+    ax = fig.add_subplot(111, title="Curvas de nivel de u", xlabel="x", ylabel="t")
+
+    xx = u.x.mesh
+    yy = u.t.mesh[t_min:t_max + 1]
+    X, Y = np.meshgrid(xx, yy)
+    Z = u.matrix[t_min:t_max + 1]
+    plt.contour(X, Y, Z, n_lines, cmap="plasma")
+    cbar = plt.colorbar()
+    cbar.ax.set_ylabel("Valores de la curva", rotation=90)
+
+
 def plot_phase_plane(u: AbstractSolverU, R: AbstractSolverR,
                      fig_config: dict = None, ax_config: dict = None, eps=0.01):
     x = R.calculate_total_mass()
