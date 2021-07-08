@@ -13,6 +13,113 @@ import matplotlib.pyplot as plt
 import numpy as np
 from IPython.display import HTML
 from matplotlib import animation
+from matplotlib.collections import LineCollection
+
+from perthame_pde.model.solver import AbstractSolverU, AbstractSolverR
+
+_FIGSIZE = (10, 5)
+
+
+def plot_phase_plane(u: AbstractSolverU, R: AbstractSolverR,
+                     fig_config: dict = None, ax_config: dict = None):
+    x = R.calculate_total_mass()
+    y = u.calculate_total_mass()
+    t = R.t.mesh
+
+    if ax_config is None:
+        ax_config = {
+            "title": "Trayectorias en el plano de fase (R, u)",
+            "xlabel": "Masa total de recursos",
+            "ylabel": "Masa total de la población",
+            "xlim": (x.min(), x.max()),
+            "ylim": (y.min(), y.max()),
+        }
+    if fig_config is None:
+        fig_config = {
+            "figsize": _FIGSIZE
+        }
+
+    fig = plt.figure(**fig_config)
+    ax = fig.add_subplot(111, **ax_config)
+
+    points = np.array([x, y]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+    norm = plt.Normalize(t.min(), t.max())
+    lc = LineCollection(segments, cmap="plasma", norm=norm)
+    lc.set_array(t)
+    lc.set_linewidth(2)
+    line = ax.add_collection(lc)
+    fig.colorbar(line, ax=ax)
+
+    plt.show()
+
+
+def plot_total_mass(u: AbstractSolverU, R: AbstractSolverR,
+                    fmt: list = None, label: list = None,
+                    fig_config: dict = None, ax_config: dict = None):
+    if ax_config is None:
+        ax_config = {
+            "title": "Biomasa total de los rasgos y recursos",
+            "xlabel": "Tiempo",
+            "ylabel": "Biomasa"
+        }
+    if fig_config is None:
+        fig_config = {
+            "figsize": _FIGSIZE
+        }
+    fmt = fmt if fmt is not None else ["-", "-."]
+    label = label if label is not None else ["rasgo", "recurso"]
+    fig = plt.figure(**fig_config)
+    ax = fig.add_subplot(111, **ax_config)
+
+    valores_t = u.t.mesh
+    valores_u = u.calculate_total_mass()
+    valores_R = R.calculate_total_mass()
+
+    plt.plot(valores_t, valores_u, fmt=fmt[0], label=label[0])
+    plt.plot(valores_t, valores_R, fmt=fmt[1], label=label[1])
+
+    plt.legend(ncol=2, loc="best", prop={'size': 12})
+
+
+def plot_anim(u: AbstractSolverU, R: AbstractSolverR,
+              speed: float = 1.0, t_min: int = None, t_max: int = None,
+              fmt: list = None, label: list = None, T0: float = None,
+              fig_config: dict = None, ax_config: dict = None, fig_label: dict = None):
+    if fig_label is None:
+        fig_label = {
+            "title": "Gráfico de la distribución de rasgos y recursos",
+            "xlabel": "rasgo/recurso",
+            "ylabel": "densidad"
+        }
+    if fig_config is None:
+        fig_config = {
+            "figsize": _FIGSIZE
+        }
+    if ax_config is None:
+        ax_config = {}
+    t_min = t_min if t_min is not None else 0
+    t_max = t_max if t_max is not None else u.t.T
+    fmt = fmt if fmt is not None else ["-", "-."]
+    label = label if label is not None else ["rasgo", "recurso"]
+    T0 = T0 if T0 is not None else u.t.dt * t_min
+
+    anim = Animar(
+        x=[u.x.mesh, R.y.mesh],
+        NT=t_max - t_min,
+        dt=u.t.dt,
+        funcs=[u.matrix[t_min:t_max + 1], R.matrix[t_min:t_max + 1]],
+        fmt=fmt,
+        label=label,
+        T0=T0
+    )
+    anim.crear_fig(**fig_config)
+    anim.crear_ax(**ax_config)
+    anim.animar(speed)
+    anim.rotular(**fig_label)
+
+    return anim.mostrar_en_notebook()
 
 
 # TODO: Ver si hay validadores que se pueden pasar a utils.validators
