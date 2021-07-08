@@ -21,7 +21,7 @@ _FIGSIZE = (10, 5)
 
 
 def plot_phase_plane(u: AbstractSolverU, R: AbstractSolverR,
-                     fig_config: dict = None, ax_config: dict = None):
+                     fig_config: dict = None, ax_config: dict = None, eps=0.01):
     x = R.calculate_total_mass()
     y = u.calculate_total_mass()
     t = R.t.mesh
@@ -31,8 +31,8 @@ def plot_phase_plane(u: AbstractSolverU, R: AbstractSolverR,
             "title": "Trayectorias en el plano de fase (R, u)",
             "xlabel": "Masa total de los recursos",
             "ylabel": "Masa total de la población",
-            "xlim": (x.min(), x.max()),
-            "ylim": (y.min(), y.max()),
+            "xlim": (x.min() - eps * abs(x.min()), x.max() - eps * abs(x.max())),
+            "ylim": (y.min() - eps * abs(y.min()), y.max() - eps * abs(y.max())),
         }
     if fig_config is None:
         fig_config = {
