@@ -31,8 +31,8 @@ def plot_phase_plane(u: AbstractSolverU, R: AbstractSolverR,
             "title": "Trayectorias en el plano de fase (R, u)",
             "xlabel": "Masa total de los recursos",
             "ylabel": "Masa total de la población",
-            "xlim": (x.min() - eps * abs(x.min()), x.max() - eps * abs(x.max())),
-            "ylim": (y.min() - eps * abs(y.min()), y.max() - eps * abs(y.max())),
+            "xlim": (x.min() - eps * abs(x.min()), x.max() + eps * abs(x.max())),
+            "ylim": (y.min() - eps * abs(y.min()), y.max() + eps * abs(y.max())),
         }
     if fig_config is None:
         fig_config = {
