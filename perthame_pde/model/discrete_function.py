@@ -7,12 +7,11 @@
 # @Software : PyCharm
 
 from abc import ABC
-from typing import Tuple, Union
+from typing import Tuple
 
 import numpy as np
 
 from perthame_pde.model.mesh import TMesh, XMesh, YMesh, ZMesh
-from perthame_pde.utils.validators import validate_index
 
 BoundaryType = Tuple[int, int]
 
@@ -66,9 +65,8 @@ class AbstractDiscreteFunction(ABC):
                 + tab + f"shape={self.matrix.shape}, matrix=\n{matrix_str}\n"
                 + f")")
 
-    def __getitem__(self, item: Union[int, Tuple[int, int]]):
-        validate_index(item)
-        return self.matrix[item]
+    def __getitem__(self, item):
+        return self.matrix.__getitem__(item)
 
     @property
     def matrix(self) -> np.ndarray:

@@ -79,4 +79,6 @@ u, R = solve_perthame(
 )
 
 # print(u, R)
-print(u.F)
+# print(u.F)
+print(u)
+print(u[2, 3:8])
