@@ -1,3 +1,7 @@
+[![Open In Collab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/12eInXV0C5Cep8h0PWgh2WxzGKr96NYfa?usp=sharing)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-no-red.svg)](https://bitbucket.org/lbesson/ansi-colors)
+[![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/asolnn2a8/evolution_of_species/blob/master/LICENSE.md)
+
 # evolution_of_species
 
 Proyecto orientado a resolver las Ecuaciones de Perthame que se encuentran en el paper [Evolution of species trait through resource competition](https://link.springer.com/article/10.1007/s00285-011-0447-z). Para más información puede revisar [la Wiki del proyecto](https://github.com/asolnn2a8/evolution_of_species/wiki). Aquí se puede observar un [notebook de ejemplo en google colab](https://colab.research.google.com/drive/12eInXV0C5Cep8h0PWgh2WxzGKr96NYfa?usp=sharing).
