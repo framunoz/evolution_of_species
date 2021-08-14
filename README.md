@@ -4,11 +4,32 @@ Proyecto orientado a resolver las Ecuaciones de Perthame que se encuentran en el
 
 # Instalación
 
+## Usando entorno virtual
+Es recomendable (y buena práctica) utilizar entornos virtuales para la instalación de la librería (por incompatibilidades de requerimientos). Las siguientes instrucciones crean e instalan la librería en el entorno virtual `my_env`:
+
+### Windows
+```
+py -m pip install --upgrade pip
+py -m pip install --user virtualenv
+py -m venv my_env
+.\my_env\Scripts\activate
+pip install git+https://github.com/asolnn2a8/evolution_of_species.git#egg=perthame_pde
+```
+### Unix/macOS
+```
+python3 -m pip install --upgrade pip
+python3 -m pip install --user virtualenv
+python3 -m venv my_env
+source my_env/bin/activate
+python3 -m pip install git+https://github.com/asolnn2a8/evolution_of_species.git#egg=perthame_pde
+```
+
 ## PIP
 Si usas `pip` se puede instalar el paquete con:
 ```
 pip install git+https://github.com/asolnn2a8/evolution_of_species.git#egg=perthame_pde
 ```
+Observar que esta acción hará que la librería se pueda ocupar de forma global.
 
 # TODO
 
