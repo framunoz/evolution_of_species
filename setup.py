@@ -15,6 +15,6 @@ setup(
     version="0.1.0",
     description="Library to solve the Perthame's equations",
     author="J. Bravo, V. Gómez & F. Muñoz",
-    # license=None,
+    license="MIT",
     install_requires=install_requires,
 )
