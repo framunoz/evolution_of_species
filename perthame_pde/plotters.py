@@ -413,7 +413,8 @@ class Animar:
         plt.close(self._fig)
         return anim_html
 
-    def save(self, name='animacion'):
+    def save(self, name='animacion', extra_args=None):
+        extra_args = extra_args if extra_args is None else ['-vcodec', 'libx264']
         """
         Salva la animación en caso de que exista.
         :param name:
@@ -423,4 +424,4 @@ class Animar:
             pass
         else:
             self._anim.save(self._path(name), fps=self._fps,
-                            extra_args=['-vcodec', 'libx264'])
+                            extra_args=extra_args)
