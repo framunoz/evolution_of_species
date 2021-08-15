@@ -105,7 +105,8 @@ def plot_total_mass(u: AbstractSolverU, R: AbstractSolverR,
 def plot_anim(u: AbstractSolverU, R: AbstractSolverR,
               speed: float = 1.0, t_min: int = None, t_max: int = None,
               fmt: list = None, label: list = None, T0: float = None,
-              fig_config: dict = None, ax_config: dict = None, fig_label: dict = None):
+              fig_config: dict = None, ax_config: dict = None, fig_label: dict = None,
+              return_anim=False):
     if fig_label is None:
         fig_label = {
             "title": "Gráfico de la distribución de rasgos y recursos",
@@ -137,6 +138,9 @@ def plot_anim(u: AbstractSolverU, R: AbstractSolverR,
     anim.crear_ax(**ax_config)
     anim.animar(speed)
     anim.rotular(**fig_label)
+
+    if return_anim:
+        return anim, anim.mostrar_en_notebook()
 
     return anim.mostrar_en_notebook()
 
